@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FAQ - ATS Library</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239C27B0'><path d='M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 18H6V4h2v8l2.5-1.5L13 12V4h5v16z'/></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      color: #9C27B0;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    h2 {
+      color: #6a1b9a;
+      border-bottom: 2px solid #e1bee7;
+      padding-bottom: 5px;
+      margin-top: 30px;
+    }
+    
+    .faq-item {
+      margin-bottom: 20px;
+    }
+    
+    .question {
+      font-weight: bold;
+      color: #9C27B0;
+      margin-bottom: 5px;
+    }
+    
+    .answer {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .status-list {
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+    
+    .status-emoji {
+      margin-right: 8px;
+      width: 20px;
+      text-align: center;
+    }
+    
+    .back-button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #9C27B0;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: all 0.3s;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    
+    .back-button:hover {
+      background-color: #7b1fa2;
+      transform: translateY(-2px);
+    }
+    
+    .back-button i {
+      margin-right: 8px;
+    }
+    
+    .contact-info {
+      background-color: #f3e5f5;
+      padding: 20px;
+      border-radius: 5px;
+      margin-top: 40px;
+    }
+    
+    .contact-info h3 {
+      margin-top: 0;
+      color: #6a1b9a;
+    }
+    
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><i class="fas fa-question-circle"></i> Frequently Asked Questions</h1>
+    
+    <h2>General Questions</h2>
+    
+    <div class="faq-item">
+      <div class="question">Q1: What is the ATS Library System?</div>
+      <div class="answer">A: It's a web-based library management system for ATS residents to browse available books, borrow/return books, track reading status, and add new books to the collection.</div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q2: How do I access the system?</div>
+      <div class="answer">A: Visit: <a href="https://ats-library-3d2aa.web.app" target="_blank">https://ats-library-3d2aa.web.app</a></div>
+    </div>
+    
+    <h2>Account & Authentication</h2>
+    
+    <div class="faq-item">
+      <div class="question">Q3: How do I sign up?</div>
+      <div class="answer">
+        1. Click "Sign Up" on the homepage<br>
+        2. Fill in: Name, Age, Email, Password, Apartment Number<br>
+        3. Click "Sign Up"
+      </div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q4: I forgot my password. How to reset?</div>
+      <div class="answer">A: Password reset is disabled in this version. Contact the admin for assistance.</div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q5: Why can't I see the "Add Book" button?</div>
+      <div class="answer">A: The button appears only after login. Ensure you're logged in with the correct email.</div>
+    </div>
+    
+    <h2>Book Management</h2>
+    
+    <div class="faq-item">
+      <div class="question">Q6: How do I add a new book?</div>
+      <div class="answer">
+        1. Log in → Click "Add New Book"<br>
+        2. Enter:<br>
+        &nbsp;&nbsp;- Title (required)<br>
+        &nbsp;&nbsp;- Author (required)<br>
+        &nbsp;&nbsp;- Cover image URL (optional)<br>
+        3. Click "Add Book"
+      </div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q7: How do I edit or remove a book I added?</div>
+      <div class="answer">
+        - <strong>Edit</strong>: Currently not supported (delete and re-add).<br>
+        - <strong>Remove</strong>: Go to "Owned Books" tab → Click "Remove" (only for books with status: Available/Reading).
+      </div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q8: Why can't I remove a borrowed book?</div>
+      <div class="answer">
+        A: Books can only be removed if their status is:
+        <div class="status-list">
+          <div class="status-item"><span class="status-emoji">✅</span> Available</div>
+          <div class="status-item"><span class="status-emoji">📖</span> Currently Reading</div>
+        </div>
+        <span class="status-emoji">🚫</span> Borrowed/Requested books cannot be deleted.
+      </div>
+    </div>
+    
+    <h2>Borrowing & Returning</h2>
+    
+    <div class="faq-item">
+      <div class="question">Q9: How do I borrow a book?</div>
+      <div class="answer">
+        1. Go to "Available Books" tab<br>
+        2. Click "Request" on your desired book<br>
+        3. Owner will approve and set a meeting time/place
+      </div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q10: How do I return a book?</div>
+      <div class="answer">
+        1. Go to "Borrowed Books" tab<br>
+        2. Click "Return Book"<br>
+        3. Set a return meeting time/place<br>
+        4. Owner must confirm the return
+      </div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q11: What's the difference between statuses?</div>
+      <div class="answer">
+        <div class="status-list">
+          <div class="status-item"><strong>Available</strong>: Can be borrowed</div>
+          <div class="status-item"><strong>Reading</strong>: Owner is reading it (not borrowable)</div>
+          <div class="status-item"><strong>Requested</strong>: Someone asked to borrow it</div>
+          <div class="status-item"><strong>Borrowed</strong>: Currently checked out</div>
+          <div class="status-item"><strong>Pending Return</strong>: Return initiated but owner has yet to confirm that they have received the book back</div>
+        </div>
+      </div>
+    </div>
+    
+    <h2>Technical Issues</h2>
+    
+    <div class="faq-item">
+      <div class="question">Q12: The page isn't loading properly. What to do?</div>
+      <div class="answer">
+        Try:<br>
+        1. Hard refresh (<code>Ctrl + F5</code>)<br>
+        2. Clear browser cache
+      </div>
+    </div>
+    
+    <div class="faq-item">
+      <div class="question">Q13: I'm getting "Permission Denied" errors</div>
+      <div class="answer">
+        A: This means:<br>
+        - You're not logged in<br>
+        - Your account isn't registered<br><br>
+        
+        <strong>Solution</strong>:<br>
+        1. Log out → Log back in<br>
+        2. Ensure you're registered in the system
+      </div>
+    </div>
+    
+    <div class="contact-info">
+      <h3><i class="fas fa-life-ring"></i> Still Need Help?</h3>
+      <p>Contact: <strong>Satdeep Singh</strong><br>
+      <i class="fas fa-envelope"></i> <a href="mailto:satdeep@gmail.com">satdeep@gmail.com</a><br>
+      <i class="fas fa-phone-alt"></i> +91-8378987819 (Call/WhatsApp)<br>
+      <i class="fas fa-home"></i> Flat No. 5241
+</p>
+      
+    </div>
+    
+    <button onclick="window.location.href='index.html'" class="back-button">
+      <i class="fas fa-arrow-left"></i> Back to Library
+    </button>
+
+<div class="faq-item">
+      <div class="question"> <br>Last updated: April 12, 2025 <!-- Update this date manually when you make changes -->
+</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ATS Residents' Library</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239C27B0'><path d='M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 18H6V4h2v8l2.5-1.5L13 12V4h5v16z'/></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { 
+      font-family: Arial; 
+      padding: 20px; 
+      max-width: 1200px; 
+      margin: 0 auto;
+      background-color: #f5f5f5;
+    }
+    .hidden { display: none; }
+    input { 
+      margin: 5px 0; 
+      padding: 8px; 
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .faq-button {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background-color: #6a1b9a;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 100;
+    }
+    
+    .faq-button:hover {
+      background-color: #9C27B0;
+      transform: scale(1.1);
+    }
+    button { 
+      margin: 5px; 
+      padding: 8px 12px; 
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    table { 
+      width: 100%; 
+      margin-bottom: 20px; 
+      border-collapse: collapse;
+      background-color: white;
+    }
+    th, td { 
+      padding: 10px; 
+      text-align: left; 
+      border: 1px solid #ccc; 
+    }
+    th { 
+      background-color: #f4f4f4; 
+    }
+    .section { 
+      margin-bottom: 40px; 
+    }
+    .tabs button { 
+      margin-right: 10px; 
+      padding: 10px; 
+      cursor: pointer; 
+    }
+    .tab-content.hidden { 
+      display: none; 
+    }
+    #user-info { 
+      margin: 10px 0; 
+      font-weight: bold; 
+    }
+    .reading-status { 
+      background-color: #fff3cd; 
+    }
+    .requested-status { 
+      color: #ff9800; 
+      font-weight: bold; 
+    }
+    .overdue { 
+      color: red; 
+      font-weight: bold; 
+    }
+    .not-available { 
+      color: #999; 
+      font-style: italic; 
+    }
+    .reading-indicator { 
+      color: #ff9800; 
+    }
+    .borrowed-status { 
+      color: #f44336; 
+      font-weight: bold; 
+    }
+    
+    h2 { 
+      text-align: center; 
+      font-size: 28px;
+      margin-bottom: 30px;
+      color: #2c3e50;
+    }
+
+    #auth-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 30px;
+      align-items: stretch;
+    }
+    #login-box, #signup-box, #recent-books {
+      flex: 1;
+      min-width: 300px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #login-box h3, #signup-box h3, #recent-books h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    #login-box { order: 1; }
+    #recent-books { order: 2; margin: 0; }
+    #signup-box { order: 3; }
+
+    .book-cover-container {
+      width: 50px;
+      height: 75px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      position: relative;
+    }
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .book-cover-container::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: url('https://cdn-icons-png.freepik.com/512/3488/3488109.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      display: none;
+    }
+    .book-cover-container:empty::after,
+    .book-cover-container:not(:has(img))::after {
+      display: block;
+    }
+    .book-title-with-cover {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #recent-books h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    #recent-books-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #recent-books-table th {
+      background-color: #e9e9e9;
+      padding: 10px;
+      text-align: left;
+    }
+    #recent-books-table td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .recent-book-cover-container {
+      width: 40px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      position: relative;
+    }
+    .recent-book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .recent-book-cover-container::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: url('https://cdn-icons-png.freepik.com/512/3488/3488109.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      display: none;
+    }
+    .recent-book-cover-container:empty::after,
+    .recent-book-cover-container:not(:has(img))::after {
+      display: block;
+    }
+    .recent-book-title-with-cover {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #logout-btn, #add-book-btn {
+      background-color: #f44336;
+      color: white;
+      margin-top: 20px;
+    }
+    #add-book-btn {
+      background-color: #9C27B0;
+    }
+    #login-box button {
+      background-color: #4CAF50;
+      color: white;
+      width: 100%;
+    }
+    #signup-box button {
+      background-color: #2196F3;
+      color: white;
+      width: 100%;
+    }
+    .tabs button {
+      background-color: #607D8B;
+      color: white;
+    }
+    #available-books-section button {
+      background-color: #FF9800;
+      color: white;
+    }
+    #borrowed-books-section button {
+      background-color: #3F51B5;
+      color: white;
+    }
+    #owned-books-section button {
+      background-color: #009688;
+      color: white;
+    }
+    #owned-books-section button:nth-child(1) {
+      background-color: #4CAF50;
+    }
+    #owned-books-section button:nth-child(2) {
+      background-color: #f44336;
+    }
+    #owned-books-section button.reading-toggle {
+      background-color: #FFC107;
+    }
+    #owned-books-section button:nth-child(4) {
+      background-color: #607D8B;
+    }
+
+    .meeting-info {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      border-left: 4px solid #4CAF50;
+    }
+    .meeting-info p {
+      margin: 5px 0;
+    }
+    .meeting-place {
+      font-weight: bold;
+    }
+    .meeting-time {
+      font-style: italic;
+    }
+
+    /* NEW STYLES FOR RETURN INFO */
+    .return-info {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #fff8e1;
+      border-radius: 4px;
+      border-left: 4px solid #FFC107;
+    }
+    .return-info p {
+      margin: 5px 0;
+    }
+    .return-place {
+      font-weight: bold;
+      color: #FF9800;
+    }
+    .return-time {
+      font-style: italic;
+      color: #FF9800;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 5px;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover {
+      color: black;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .form-group select, .form-group input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    /* ONLY ADDED THIS FOR ADMIN LINK */
+    .admin-link {
+      display: inline-block;
+      margin-left: 15px;
+      padding: 5px 10px;
+      background-color: #9C27B0;
+      color: white;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    /* END OF ADDED STYLE */
+
+    @media (max-width: 768px) {
+      #auth-section {
+        flex-direction: column;
+      }
+      #login-box, #signup-box, #recent-books {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<button class="faq-button" onclick="window.location.href='faq.html'" title="FAQ">
+  <i class="fas fa-question"></i>
+</button>
+<h2>ATS Residents' Library</h2>
+<div id="user-info" class="hidden"></div>
+
+<div id="auth-section">
+  <div id="login-box">
+    <h3>Log In</h3>
+    <input type="email" id="login-email" placeholder="Email">
+    <input type="password" id="login-password" placeholder="Password">
+    <button onclick="logIn()">Log In</button>
+  </div>
+
+  <div id="recent-books" class="hidden">
+    <h3>Recently Added Books (Last 24 Hours)</h3>
+    <table id="recent-books-table">
+      <thead>
+        <tr><th>Cover</th><th>Title</th><th>Author</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="signup-box">
+    <h3>Sign Up</h3>
+    <input type="text" id="signup-name" placeholder="Name">
+    <input type="number" id="signup-age" placeholder="Age">
+    <input type="email" id="signup-email" placeholder="Email">
+    <input type="password" id="signup-password" placeholder="Password">
+    <input type="text" id="signup-apartment" placeholder="Apartment No.">
+    <button onclick="signUp()">Sign Up</button>
+  </div>
+</div>
+
+<button id="logout-btn" class="hidden" onclick="logOut()">Log Out</button>
+<button id="add-book-btn" class="hidden" onclick="window.location.href='add-book.html'">Add New Book</button>
+
+<div id="book-tabs-wrapper" class="hidden">
+  <div class="tabs">
+    <button onclick="showTab('available-books-section')">Available Books</button>
+    <button onclick="showTab('borrowed-books-section')">Borrowed Books</button>
+    <button onclick="showTab('owned-books-section')">Owned Books</button>
+  </div>
+
+  <div id="available-books-section" class="section tab-content">
+    <h3>Available Books</h3>
+    <input type="text" id="search-input" placeholder="Search by title or author" oninput="filterAvailableBooks()">
+    <table id="available-books-table">
+      <thead>
+        <tr><th>Title</th><th>Author</th><th>Owner</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="borrowed-books-section" class="section tab-content hidden">
+    <h3>Borrowed Books</h3>
+    <table id="borrowed-books-table">
+      <thead>
+        <tr><th>Title</th><th>Author</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="owned-books-section" class="section tab-content hidden">
+    <h3>Owned Books</h3>
+    <table id="owned-books-table">
+      <thead>
+        <tr><th>Title</th><th>Author</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDom_1RCdeMpLNRq1-hvilxo8rLIYOoDIQ",
+  authDomain: "ats-library-3d2aa.firebaseapp.com",
+  projectId: "ats-library-3d2aa",
+  storageBucket: "ats-library-3d2aa.appspot.com",
+  messagingSenderId: "583647909480",
+  appId: "1:583647909480:web:d963f832b73f8f4cca4ddd"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let userData = {};
+let allBooks = [];
+
+function toProperCase(str) {
+  if (!str) return '';
+  return str.replace(/\w\S*/g, function(txt) {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+}
+
+function showTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+  document.getElementById(tabId).classList.remove('hidden');
+}
+
+function signUp() {
+  const email = document.getElementById('signup-email').value;
+  const password = document.getElementById('signup-password').value;
+  const apartment = document.getElementById('signup-apartment').value;
+  const name = toProperCase(document.getElementById('signup-name').value);
+  const age = parseInt(document.getElementById('signup-age').value);
+
+  if (!email || !password || !apartment || !name || !age) {
+    return alert("All fields are required!");
+  }
+
+  auth.createUserWithEmailAndPassword(email, password)
+    .then((cred) => db.collection("users").doc(cred.user.uid).set({ 
+      email, 
+      apartment, 
+      name, 
+      age,
+      isAdmin: false
+    }))
+    .then(() => {
+      alert("Signup successful");
+      loadRecentBooks();
+    })
+    .catch(err => alert(err.message));
+}
+
+function logIn() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  auth.signInWithEmailAndPassword(email, password)
+    .then(() => alert("Login successful"))
+    .catch(err => alert(err.message));
+}
+
+function logOut() {
+  auth.signOut().then(() => {
+    alert("Logged out");
+    clearTables();
+    document.getElementById('book-tabs-wrapper').classList.add('hidden');
+    document.getElementById('add-book-btn').classList.add('hidden');
+    loadRecentBooks();
+  });
+}
+
+function loadRecentBooks() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  db.collection("books")
+    .where("createdAt", ">=", yesterday)
+    .orderBy("createdAt", "desc")
+    .limit(10)
+    .get()
+    .then(snapshot => {
+      const recentBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      displayRecentBooks(recentBooks);
+    })
+    .catch(err => console.error("Error loading recent books:", err));
+}
+
+function displayRecentBooks(books) {
+  const tbody = document.querySelector('#recent-books-table tbody');
+  tbody.innerHTML = '';
+
+  if (books.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No books added in the last 24 hours</td></tr>';
+    return;
+  }
+
+  books.forEach(book => {
+    const coverHtml = book.cover 
+      ? `<div class="recent-book-cover-container"><img src="${book.cover}" class="recent-book-cover" alt="${book.title} cover"></div>`
+      : `<div class="recent-book-cover-container"></div>`;
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${coverHtml}</td>
+      <td>${toProperCase(book.title)}</td>
+      <td>${toProperCase(book.author)}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('logout-btn').classList.remove('hidden');
+    document.getElementById('add-book-btn').classList.remove('hidden');
+    document.getElementById('book-tabs-wrapper').classList.remove('hidden');
+    document.getElementById('signup-box').classList.add('hidden');
+    document.getElementById('login-box').classList.add('hidden');
+    document.getElementById('recent-books').classList.add('hidden');
+
+    db.collection("users").doc(user.uid).get().then(doc => {
+      userData = doc.data();
+      document.getElementById("user-info").textContent = `Logged in as ${toProperCase(userData.name)} (${userData.apartment})`;
+      document.getElementById("user-info").classList.remove("hidden");
+
+      // ONLY ADDED THIS BLOCK FOR ADMIN LINK
+      if (userData.isAdmin) {
+        const adminLink = document.createElement('a');
+        adminLink.href = 'admin.html';
+        adminLink.className = 'admin-link';
+        adminLink.textContent = 'Admin Panel';
+        adminLink.title = 'Go to Admin Panel';
+        document.getElementById("user-info").appendChild(adminLink);
+      }
+      // END OF ADDED BLOCK
+      
+      loadBooks();
+      showTab('available-books-section');
+    });
+  } else {
+    document.getElementById('logout-btn').classList.add('hidden');
+    document.getElementById('add-book-btn').classList.add('hidden');
+    document.getElementById('book-tabs-wrapper').classList.add('hidden');
+    document.getElementById('signup-box').classList.remove('hidden');
+    document.getElementById('login-box').classList.remove('hidden');
+    document.getElementById("user-info").classList.add("hidden");
+    document.getElementById('recent-books').classList.remove('hidden');
+    clearTables();
+    loadRecentBooks();
+  }
+});
+
+function loadBooks() {
+  db.collection("books").orderBy("createdAt", "desc").get().then(snapshot => {
+    allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    updateSections();
+  }).catch(err => console.error("Error loading books:", err));
+}
+
+function updateSections() {
+  const user = auth.currentUser;
+  const owned = document.querySelector('#owned-books-table tbody');
+  const borrowed = document.querySelector('#borrowed-books-table tbody');
+  const available = document.querySelector('#available-books-table tbody');
+  owned.innerHTML = borrowed.innerHTML = available.innerHTML = '';
+
+  allBooks.forEach(book => {
+    const coverHtml = book.cover 
+      ? `<div class="book-cover-container"><img src="${book.cover}" class="book-cover" alt="${book.title} cover"></div>`
+      : `<div class="book-cover-container"></div>`;
+    
+    // Owned Books
+    if (book.owner === user.email) {
+      const row = document.createElement('tr');
+      if (book.status === "reading") row.classList.add('reading-status');
+      
+      let statusText = toProperCase(book.status);
+      let returnInfo = '';
+      
+      if (book.status === "requested" && book.requestedByName) {
+        statusText = `Requested by ${toProperCase(book.requestedByName)} (${book.requestedByApartment})`;
+      } 
+      else if (book.status === "borrowed" && book.borrowedByName) {
+        statusText = `Borrowed by ${toProperCase(book.borrowedByName)} (${book.borrowedByApartment})`;
+        // Show return meeting info to owner if available
+        if (book.returnMeetingPlace && book.returnMeetingTime) {
+          const returnTime = new Date(book.returnMeetingTime).toLocaleString();
+          returnInfo = `
+            <div class="return-info">
+              <p><span class="return-place">Scheduled Return Place:</span> ${book.returnMeetingPlace}</p>
+              <p><span class="return-time">Scheduled Return Time:</span> ${returnTime}</p>
+            </div>
+          `;
+        }
+      }
+      else if (book.status === "pending return") {
+        statusText = "Pending Return";
+        if (book.returnMeetingPlace && book.returnMeetingTime) {
+          const returnTime = new Date(book.returnMeetingTime).toLocaleString();
+          returnInfo = `
+            <div class="return-info">
+              <p><span class="return-place">Return Meeting Place:</span> ${book.returnMeetingPlace}</p>
+              <p><span class="return-time">Return Meeting Time:</span> ${returnTime}</p>
+            </div>
+          `;
+        }
+      }
+      
+      let actions = '';
+      if (book.status === "requested" && book.requestedBy !== user.email) {
+        actions = `<button onclick="acceptRequest('${book.id}')">Accept</button>
+                   <button onclick="declineRequest('${book.id}')">Decline</button>`;
+      } else if (book.status === "pending return") {
+        actions = `<button onclick="confirmReturn('${book.id}')">Confirm Return</button>`;
+      }
+      
+      if (book.status === "available" || book.status === "reading") {
+        actions += `<button class="reading-toggle" onclick="toggleReadingStatus('${book.id}', ${book.status === 'reading'})">
+                     ${book.status === 'reading' ? 'Make Available' : 'Mark as Reading'}
+                   </button>`;
+      }
+      
+      if (book.status === "available" || book.status === "reading") {
+        actions += `<button onclick="removeBook('${book.id}')">Remove</button>`;
+      }
+      
+      row.innerHTML = `
+        <td>
+          <div class="book-title-with-cover">
+            ${coverHtml}
+            ${toProperCase(book.title)}
+          </div>
+        </td>
+        <td>${toProperCase(book.author)}</td>
+        <td>${statusText}${returnInfo}</td>
+        <td>${actions}</td>
+      `;
+      owned.appendChild(row);
+    }
+
+    // Borrowed Books
+    if ((book.borrowedBy === user.email) || 
+        (book.requestedBy === user.email) || 
+        (book.status === "pending return" && book.borrowedBy === user.email)) {
+      const row = document.createElement('tr');
+      let status, actions = '';
+      let meetingInfo = '';
+      
+      if (book.status === "requested" && book.requestedBy === user.email) {
+        status = "Requested to Borrow";
+        row.classList.add('requested-status');
+        actions = `<button onclick="cancelRequest('${book.id}')">Cancel Request</button>`;
+      } 
+      else if (book.status === "pending return" && book.borrowedBy === user.email) {
+        status = "Return Initiated";
+        if (book.returnMeetingPlace && book.returnMeetingTime) {
+          const returnTime = new Date(book.returnMeetingTime).toLocaleString();
+          meetingInfo = `
+            <div class="meeting-info">
+              <p><span class="meeting-place">Return Meeting Place:</span> ${book.returnMeetingPlace}</p>
+              <p><span class="meeting-time">Return Meeting Time:</span> ${returnTime}</p>
+            </div>
+          `;
+        }
+      }
+      else if (book.status === "borrowed" && book.borrowedBy === user.email) {
+        status = "Borrowed";
+        actions = `<button onclick="initiateReturn('${book.id}')">Return Book</button>`;
+        
+        if (book.meetingPlace && book.meetingTime) {
+          const meetingTime = new Date(book.meetingTime).toLocaleString();
+          meetingInfo = `
+            <div class="meeting-info">
+              <p><span class="meeting-place">Meeting Place:</span> ${book.meetingPlace}</p>
+              <p><span class="meeting-time">Meeting Time:</span> ${meetingTime}</p>
+            </div>
+          `;
+        }
+      }
+      
+      row.innerHTML = `
+        <td>
+          <div class="book-title-with-cover">
+            ${coverHtml}
+            ${toProperCase(book.title)}
+          </div>
+        </td>
+        <td>${toProperCase(book.author)}</td>
+        <td>${status}${meetingInfo}</td>
+        <td>${actions}</td>
+      `;
+      borrowed.appendChild(row);
+    }
+
+    // Available Books
+    if (book.owner !== user.email) {
+      const row = document.createElement('tr');
+      let statusText, actions = '';
+      
+      if (book.status === "borrowed") {
+        row.classList.add('borrowed-status');
+        statusText = `Borrowed by ${toProperCase(book.borrowedByName)} (${book.borrowedByApartment})`;
+        actions = `<span class="not-available">Not Available</span>`;
+      } 
+      else if (book.status === "reading") {
+        row.classList.add('not-available');
+        statusText = `<span class="reading-indicator">Currently Reading</span>`;
+        actions = `<span class="not-available">Not Available</span>`;
+      }
+      else if (book.status === "available") {
+        statusText = "Available";
+        actions = `<button onclick="requestBook('${book.id}')">Request</button>`;
+      }
+      else if (book.status === "requested") {
+        statusText = `Requested by ${toProperCase(book.requestedByName)} (${book.requestedByApartment})`;
+        actions = `<span class="not-available">Not Available</span>`;
+      }
+      
+      row.innerHTML = `
+        <td>
+          <div class="book-title-with-cover">
+            ${coverHtml}
+            ${toProperCase(book.title)}
+          </div>
+        </td>
+        <td>${toProperCase(book.author)}</td>
+        <td>${toProperCase(book.ownerName || book.owner)} (${book.ownerApartment})</td>
+        <td>${statusText}</td>
+        <td>${actions}</td>
+      `;
+      available.appendChild(row);
+    }
+  });
+}
+
+function toggleReadingStatus(bookId, isCurrentlyReading) {
+  const newStatus = isCurrentlyReading ? 'available' : 'reading';
+  
+  db.collection("books").doc(bookId).update({
+    status: newStatus
+  })
+  .then(() => {
+    loadBooks();
+    alert(`Book marked as ${toProperCase(newStatus)}`);
+  })
+  .catch(err => alert("Error: " + err.message));
+}
+
+function filterAvailableBooks() {
+  const query = document.getElementById('search-input').value.toLowerCase();
+  const rows = document.querySelectorAll('#available-books-table tbody tr');
+  rows.forEach(row => {
+    const titleCell = row.querySelector('td:first-child');
+    const title = titleCell.textContent.toLowerCase();
+    const author = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+    row.style.display = (title.includes(query) || author.includes(query)) ? '' : 'none';
+  });
+}
+
+function requestBook(id) {
+  const book = allBooks.find(b => b.id === id);
+  if (book.status !== "available") {
+    return alert("This book is not available for lending");
+  }
+  
+  if (confirm("Send borrow request for this book?")) {
+    db.collection("books").doc(id).update({
+      status: "requested",
+      requestedBy: auth.currentUser.email,
+      requestedByName: userData.name,
+      requestedByApartment: userData.apartment
+    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+  }
+}
+
+function cancelRequest(id) {
+  if (confirm("Are you sure you want to cancel this borrow request?")) {
+    db.collection("books").doc(id).update({
+      status: "available",
+      requestedBy: "",
+      requestedByName: "",
+      requestedByApartment: ""
+    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+  }
+}
+
+function acceptRequest(id) {
+  const book = allBooks.find(b => b.id === id);
+  
+  // Create modal for meeting details
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Accept Request from ${toProperCase(book.requestedByName)}</h3>
+      <div class="form-group">
+        <label for="meeting-place">Meeting Place:</label>
+        <select id="meeting-place">
+          <option value="Owner's (${userData.name}, ${userData.apartment}) tower entrance">Owner's (${userData.name}, ${userData.apartment}) tower entrance</option>
+          <option value="Basketball Court">Basketball Court</option>
+          <option value="Tennis Court">Tennis Court</option>
+          <option value="Amphitheatre">Amphitheatre</option>
+          <option value="Children's Park">Children's Park</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="meeting-time">Meeting Time:</label>
+        <input type="datetime-local" id="meeting-time" required>
+      </div>
+      <button onclick="confirmAcceptRequest('${id}')" style="background-color: #4CAF50; color: white; width: 100%; padding: 10px; margin-top: 10px;">Confirm Acceptance</button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  modal.style.display = 'block';
+  
+  // Close modal when clicking X
+  modal.querySelector('.close').onclick = function() {
+    modal.style.display = 'none';
+    document.body.removeChild(modal);
+  };
+  
+  // Close modal when clicking outside
+  window.onclick = function(event) {
+    if (event.target == modal) {
+      modal.style.display = 'none';
+      document.body.removeChild(modal);
+    }
+  };
+}
+
+function confirmAcceptRequest(id) {
+  const meetingPlace = document.getElementById('meeting-place').value;
+  const meetingTime = document.getElementById('meeting-time').value;
+  
+  if (!meetingTime) {
+    return alert("Please select a meeting time");
+  }
+  
+  const book = allBooks.find(b => b.id === id);
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 14); // 2-week loan
+  
+  db.collection("books").doc(id).update({
+    status: "borrowed",
+    borrowedBy: book.requestedBy,
+    borrowedByName: book.requestedByName,
+    borrowedByApartment: book.requestedByApartment,
+    dueDate: dueDate,
+    requestedBy: "",
+    requestedByName: "",
+    requestedByApartment: "",
+    meetingPlace: meetingPlace,
+    meetingTime: meetingTime
+  }).then(() => {
+    document.querySelector('.modal').style.display = 'none';
+    document.body.removeChild(document.querySelector('.modal'));
+    loadBooks();
+  }).catch(err => alert("Error: " + err.message));
+}
+
+function initiateReturn(id) {
+  const book = allBooks.find(b => b.id === id);
+  
+  // Create modal for return meeting details
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Initiate Return to ${toProperCase(book.ownerName || book.owner)}</h3>
+      <div class="form-group">
+        <label for="return-meeting-place">Meeting Place:</label>
+        <select id="return-meeting-place">
+          <option value="Borrower's (${userData.name}, ${userData.apartment}) tower entrance">Your (${userData.name}, ${userData.apartment}) tower entrance</option>
+          <option value="Basketball Court">Basketball Court</option>
+          <option value="Tennis Court">Tennis Court</option>
+          <option value="Amphitheatre">Amphitheatre</option>
+          <option value="Children's Park">Children's Park</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="return-meeting-time">Meeting Time:</label>
+        <input type="datetime-local" id="return-meeting-time" required>
+      </div>
+      <button onclick="confirmInitiateReturn('${id}')" style="background-color: #4CAF50; color: white; width: 100%; padding: 10px; margin-top: 10px;">Initiate Return</button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  modal.style.display = 'block';
+  
+  // Close modal when clicking X
+  modal.querySelector('.close').onclick = function() {
+    modal.style.display = 'none';
+    document.body.removeChild(modal);
+  };
+  
+  // Close modal when clicking outside
+  window.onclick = function(event) {
+    if (event.target == modal) {
+      modal.style.display = 'none';
+      document.body.removeChild(modal);
+    }
+  };
+}
+
+function confirmInitiateReturn(id) {
+  const returnMeetingPlace = document.getElementById('return-meeting-place').value;
+  const returnMeetingTime = document.getElementById('return-meeting-time').value;
+  
+  if (!returnMeetingTime) {
+    return alert("Please select a meeting time");
+  }
+  
+  db.collection("books").doc(id).update({
+    status: "pending return",
+    returnMeetingPlace: returnMeetingPlace,
+    returnMeetingTime: returnMeetingTime
+  }).then(() => {
+    document.querySelector('.modal').style.display = 'none';
+    document.body.removeChild(document.querySelector('.modal'));
+    loadBooks();
+  }).catch(err => alert("Error: " + err.message));
+}
+
+function declineRequest(id) {
+  const book = allBooks.find(b => b.id === id);
+  if (confirm(`Decline request from ${toProperCase(book.requestedByName)}?`)) {
+    db.collection("books").doc(id).update({
+      status: "available",
+      requestedBy: "",
+      requestedByName: "",
+      requestedByApartment: ""
+    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+  }
+}
+
+function confirmReturn(id) {
+  if (confirm("Confirm that the book has been returned?")) {
+    db.collection("books").doc(id).update({
+      status: "available",
+      borrowedBy: "",
+      borrowedByName: "",
+      borrowedByApartment: "",
+      requestedBy: "",
+      requestedByName: "",
+      requestedByApartment: "",
+      dueDate: null,
+      meetingPlace: "",
+      meetingTime: "",
+      returnMeetingPlace: "",
+      returnMeetingTime: ""
+    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+  }
+}
+
+function removeBook(id) {
+  const book = allBooks.find(b => b.id === id);
+  if (book.status !== "available" && book.status !== "reading") {
+    return alert("You can only remove books that are available or marked as reading");
+  }
+  
+  if (confirm("Are you sure you want to remove this book?")) {
+    db.collection("books").doc(id).delete()
+      .then(() => {
+        loadBooks();
+        loadRecentBooks();
+      })
+      .catch(err => alert("Error: " + err.message));
+  }
+}
+
+function clearTables() {
+  document.querySelectorAll('tbody').forEach(tb => tb.innerHTML = '');
+}
+</script>
+</body>
+</html>

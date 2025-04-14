@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel - ATS Library</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239C27B0'><path d='M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 18H6V4h2v8l2.5-1.5L13 12V4h5v16z'/></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #9C27B0;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background: #f1f1f1;
+      margin-right: 5px;
+      border-radius: 5px 5px 0 0;
+      transition: all 0.2s ease;
+    }
+    .tab.active {
+      background: #9C27B0;
+      color: white;
+    }
+    .tab:hover:not(.active) {
+      background: #e1bee7;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f8f8f8;
+    }
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+    .back-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #9C27B0;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    .back-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .back-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Status Styles matching index.html */
+    .requested-status { 
+      color: #ff9800; 
+      font-weight: bold; 
+    }
+    .overdue { 
+      color: red; 
+      font-weight: bold; 
+    }
+    .not-available { 
+      color: #999; 
+      font-style: italic; 
+    }
+    .reading-indicator { 
+      color: #ff9800; 
+    }
+    .borrowed-status { 
+      color: #f44336; 
+      font-weight: bold; 
+    }
+    .pending-return {
+      color: #9C27B0;
+      font-weight: bold;
+    }
+
+    /* Updated Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 25px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover {
+      color: #9C27B0;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+    }
+    .form-group input, 
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin: 5px 0;
+    }
+
+    /* Book Cover Styles */
+    .book-cover-container {
+      width: 50px;
+      height: 75px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      position: relative;
+    }
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .book-cover-container::after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: url('https://cdn-icons-png.freepik.com/512/3488/3488109.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      display: none;
+    }
+    .book-cover-container:empty::after,
+    .book-cover-container:not(:has(img))::after {
+      display: block;
+    }
+    .book-title-with-cover {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Updated Button Styles */
+    button {
+      margin: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .save-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .cancel-btn {
+      background-color: #607D8B;
+      color: white;
+    }
+    .edit-btn {
+      background-color: #2196F3;
+      color: white;
+    }
+    .delete-btn {
+      background-color: #f44336;
+      color: white;
+    }
+    .make-admin-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .remove-admin-btn {
+      background-color: #FF9800;
+      color: white;
+    }
+    .add-new-btn {
+      background-color: #9C27B0;
+      color: white;
+      margin-bottom: 15px;
+    }
+    .action-btn {
+      padding: 8px 12px;
+      margin: 2px;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+
+    /* Search and Admin Section Styles */
+    .search-container {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .search-container input {
+      padding: 8px;
+      width: 300px;
+      max-width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* Added for inline buttons in books table */
+    .book-actions {
+      white-space: nowrap;
+    }
+    .book-actions button {
+      margin: 0 3px;
+      padding: 6px 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><i class="fas fa-user-shield"></i> Admin Panel</h1>
+    
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('books-tab')">Books Management</div>
+      <div class="tab" onclick="showTab('users-tab')">Users Management</div>
+    </div>
+    
+    <div id="books-tab" class="tab-content active">
+      <div class="search-container">
+        <input type="text" id="book-search" placeholder="Search books..." oninput="filterBooks()">
+        <button class="add-new-btn" onclick="openAddBookModal()">
+          <i class="fas fa-plus"></i> Add New Book
+        </button>
+      </div>
+      <table id="books-table">
+        <thead>
+          <tr>
+            <th>Cover</th>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Owner</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    
+    <div id="users-tab" class="tab-content">
+      <div class="search-container">
+        <input type="text" id="user-search" placeholder="Search users..." oninput="filterUsers()">
+        <button class="add-new-btn" onclick="openAddUserModal()">
+          <i class="fas fa-plus"></i> Add New User
+        </button>
+      </div>
+      <table id="users-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Apartment</th>
+            <th>Age</th>
+            <th>Admin</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    
+    <a href="index.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Library</a>
+  </div>
+
+  <!-- Edit Book Modal -->
+  <div id="edit-book-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('edit-book-modal')">&times;</span>
+      <h2 style="color: #9C27B0; margin-top: 0;">Edit Book</h2>
+      <form id="edit-book-form">
+        <input type="hidden" id="edit-book-id">
+        <div class="form-group">
+          <label for="edit-book-title">Title:</label>
+          <input type="text" id="edit-book-title" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-book-author">Author:</label>
+          <input type="text" id="edit-book-author" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-book-cover">Cover URL:</label>
+          <input type="text" id="edit-book-cover">
+        </div>
+        <div class="form-group">
+          <label for="edit-book-status">Status:</label>
+          <select id="edit-book-status">
+            <option value="available">Available</option>
+            <option value="reading">Reading</option>
+            <option value="requested">Requested</option>
+            <option value="borrowed">Borrowed</option>
+            <option value="pending return">Pending Return</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button type="submit" class="save-btn">Save Changes</button>
+          <button type="button" class="cancel-btn" onclick="closeModal('edit-book-modal')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Book Modal -->
+  <div id="add-book-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('add-book-modal')">&times;</span>
+      <h2 style="color: #9C27B0; margin-top: 0;">Add New Book</h2>
+      <form id="add-book-form">
+        <div class="form-group">
+          <label for="add-book-title">Title:</label>
+          <input type="text" id="add-book-title" required>
+        </div>
+        <div class="form-group">
+          <label for="add-book-author">Author:</label>
+          <input type="text" id="add-book-author" required>
+        </div>
+        <div class="form-group">
+          <label for="add-book-cover">Cover URL:</label>
+          <input type="text" id="add-book-cover">
+        </div>
+        <div class="form-group">
+          <label for="add-book-owner">Owner Email:</label>
+          <input type="email" id="add-book-owner" required>
+        </div>
+        <div class="form-group">
+          <label for="add-book-status">Status:</label>
+          <select id="add-book-status">
+            <option value="available">Available</option>
+            <option value="reading">Reading</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button type="submit" class="save-btn">Add Book</button>
+          <button type="button" class="cancel-btn" onclick="closeModal('add-book-modal')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div id="edit-user-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('edit-user-modal')">&times;</span>
+      <h2 style="color: #9C27B0; margin-top: 0;">Edit User</h2>
+      <form id="edit-user-form">
+        <input type="hidden" id="edit-user-id">
+        <div class="form-group">
+          <label for="edit-user-name">Name:</label>
+          <input type="text" id="edit-user-name" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-user-email">Email:</label>
+          <input type="email" id="edit-user-email" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-user-apartment">Apartment:</label>
+          <input type="text" id="edit-user-apartment" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-user-age">Age:</label>
+          <input type="number" id="edit-user-age" required>
+        </div>
+        <div class="button-group">
+          <button type="submit" class="save-btn">Save Changes</button>
+          <button type="button" class="cancel-btn" onclick="closeModal('edit-user-modal')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div id="add-user-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal('add-user-modal')">&times;</span>
+      <h2 style="color: #9C27B0; margin-top: 0;">Add New User</h2>
+      <form id="add-user-form">
+        <div class="form-group">
+          <label for="add-user-name">Name:</label>
+          <input type="text" id="add-user-name" required>
+        </div>
+        <div class="form-group">
+          <label for="add-user-email">Email:</label>
+          <input type="email" id="add-user-email" required>
+        </div>
+        <div class="form-group">
+          <label for="add-user-password">Password:</label>
+          <input type="password" id="add-user-password" required>
+        </div>
+        <div class="form-group">
+          <label for="add-user-apartment">Apartment:</label>
+          <input type="text" id="add-user-apartment" required>
+        </div>
+        <div class="form-group">
+          <label for="add-user-age">Age:</label>
+          <input type="number" id="add-user-age" required>
+        </div>
+        <div class="form-group">
+          <label for="add-user-admin">Admin Privileges:</label>
+          <select id="add-user-admin">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button type="submit" class="save-btn">Add User</button>
+          <button type="button" class="cancel-btn" onclick="closeModal('add-user-modal')">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDom_1RCdeMpLNRq1-hvilxo8rLIYOoDIQ",
+      authDomain: "ats-library-3d2aa.firebaseapp.com",
+      projectId: "ats-library-3d2aa",
+      storageBucket: "ats-library-3d2aa.appspot.com",
+      messagingSenderId: "583647909480",
+      appId: "1:583647909480:web:d963f832b73f8f4cca4ddd"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let allBooks = [];
+    let allUsers = [];
+
+    function toProperCase(str) {
+      if (!str) return '';
+      return str.replace(/\w\S*/g, function(txt) {
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+      });
+    }
+
+    function formatStatus(status, book) {
+      let statusText = toProperCase(status);
+      let statusClass = '';
+      
+      if (status === "requested") {
+        statusClass = 'requested-status';
+        if (book.requestedByName) {
+          statusText = `Requested by ${toProperCase(book.requestedByName)} (${book.requestedByApartment})`;
+        }
+      } else if (status === "borrowed") {
+        statusClass = 'borrowed-status';
+        if (book.borrowedByName) {
+          statusText = `Borrowed by ${toProperCase(book.borrowedByName)} (${book.borrowedByApartment})`;
+        }
+      } else if (status === "reading") {
+        statusClass = 'reading-indicator';
+      } else if (status === "pending return") {
+        statusClass = 'pending-return';
+      } else if (status === "available") {
+        // No special styling for available
+      }
+      
+      return `<span class="${statusClass}">${statusText}</span>`;
+    }
+
+    // Check admin status on page load
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        db.collection("users").doc(user.uid).get()
+          .then(doc => {
+            if (doc.exists && doc.data().isAdmin) {
+              currentUser = user;
+              loadBooks();
+              loadUsers();
+            } else {
+              alert("You don't have admin privileges");
+              window.location.href = 'index.html';
+            }
+          })
+          .catch(err => {
+            console.error("Error checking admin status:", err);
+            window.location.href = 'index.html';
+          });
+      } else {
+        window.location.href = 'index.html';
+      }
+    });
+
+    function showTab(tabId) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function loadBooks() {
+      db.collection("books").orderBy("title").get()
+        .then(snapshot => {
+          allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          renderBooks(allBooks);
+        })
+        .catch(err => console.error("Error loading books:", err));
+    }
+
+    function renderBooks(books) {
+      const tbody = document.querySelector('#books-table tbody');
+      tbody.innerHTML = '';
+
+      if (books.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No books found</td></tr>';
+        return;
+      }
+
+      books.forEach(book => {
+        const coverHtml = book.cover 
+          ? `<div class="book-cover-container"><img src="${book.cover}" class="book-cover" alt="${book.title} cover"></div>`
+          : `<div class="book-cover-container"></div>`;
+        
+        const statusHtml = formatStatus(book.status, book);
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${coverHtml}</td>
+          <td>${toProperCase(book.title) || ''}</td>
+          <td>${toProperCase(book.author) || ''}</td>
+          <td>${toProperCase(book.ownerName || book.owner) || ''} (${book.ownerApartment || ''})</td>
+          <td>${statusHtml}</td>
+          <td class="book-actions">
+            <button class="edit-btn" onclick="openEditBookModal('${book.id}')">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="delete-btn" onclick="deleteBook('${book.id}')">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function loadUsers() {
+      db.collection("users").get()
+        .then(snapshot => {
+          allUsers = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            isAdmin: doc.data().isAdmin || false
+          }));
+          renderUsers(allUsers);
+        })
+        .catch(err => {
+          console.error("Error loading users:", err);
+          alert("Error loading users: " + err.message);
+        });
+    }
+
+    function renderUsers(users) {
+      const tbody = document.querySelector('#users-table tbody');
+      tbody.innerHTML = '';
+
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No users found</td></tr>';
+        return;
+      }
+
+      users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${toProperCase(user.name) || ''}</td>
+          <td>${user.email || ''}</td>
+          <td>${user.apartment || ''}</td>
+          <td>${user.age || ''}</td>
+          <td>${user.isAdmin ? 'Yes' : 'No'}</td>
+          <td>
+            <button class="edit-btn" onclick="openEditUserModal('${user.id}')">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="delete-btn" onclick="deleteUser('${user.id}')">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+            <button class="${user.isAdmin ? 'remove-admin-btn' : 'make-admin-btn'}" onclick="toggleAdminStatus('${user.id}', ${!user.isAdmin})">
+              <i class="fas fa-user-${user.isAdmin ? 'minus' : 'plus'}"></i> ${user.isAdmin ? 'Remove Admin' : 'Make Admin'}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function toggleAdminStatus(userId, makeAdmin) {
+      const action = makeAdmin ? 'grant' : 'remove';
+      const confirmation = makeAdmin 
+        ? `Grant admin privileges to this user?` 
+        : `Remove admin privileges from this user?`;
+      
+      if (confirm(confirmation)) {
+        db.collection("users").doc(userId).update({ isAdmin: makeAdmin })
+          .then(() => {
+            alert(`Admin privileges ${action}ed successfully`);
+            loadUsers();
+            loadBooks(); // Refresh books to update owner admin status
+          })
+          .catch(err => {
+            console.error(`Error ${action}ing admin privileges:`, err);
+            alert(`Error: ${err.message}`);
+          });
+      }
+    }
+
+    function filterBooks() {
+      const searchTerm = document.getElementById('book-search').value.toLowerCase();
+      const filtered = allBooks.filter(book => 
+        (book.title && book.title.toLowerCase().includes(searchTerm)) ||
+        (book.author && book.author.toLowerCase().includes(searchTerm)) ||
+        (book.ownerName && book.ownerName.toLowerCase().includes(searchTerm)) ||
+        (book.owner && book.owner.toLowerCase().includes(searchTerm))
+      );
+      renderBooks(filtered);
+    }
+
+    function filterUsers() {
+      const searchTerm = document.getElementById('user-search').value.toLowerCase();
+      const filtered = allUsers.filter(user => 
+        (user.name && user.name.toLowerCase().includes(searchTerm)) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm)) ||
+        (user.apartment && user.apartment.toLowerCase().includes(searchTerm))
+      );
+      renderUsers(filtered);
+    }
+
+    function openEditBookModal(bookId) {
+      const book = allBooks.find(b => b.id === bookId);
+      if (!book) return;
+
+      document.getElementById('edit-book-id').value = book.id;
+      document.getElementById('edit-book-title').value = book.title || '';
+      document.getElementById('edit-book-author').value = book.author || '';
+      document.getElementById('edit-book-cover').value = book.cover || '';
+      document.getElementById('edit-book-status').value = book.status || 'available';
+
+      document.getElementById('edit-book-modal').style.display = 'block';
+    }
+
+    function openAddBookModal() {
+      document.getElementById('add-book-title').value = '';
+      document.getElementById('add-book-author').value = '';
+      document.getElementById('add-book-cover').value = '';
+      document.getElementById('add-book-owner').value = '';
+      document.getElementById('add-book-status').value = 'available';
+      document.getElementById('add-book-modal').style.display = 'block';
+    }
+
+    function openEditUserModal(userId) {
+      const user = allUsers.find(u => u.id === userId);
+      if (!user) return;
+
+      document.getElementById('edit-user-id').value = user.id;
+      document.getElementById('edit-user-name').value = user.name || '';
+      document.getElementById('edit-user-email').value = user.email || '';
+      document.getElementById('edit-user-apartment').value = user.apartment || '';
+      document.getElementById('edit-user-age').value = user.age || '';
+
+      document.getElementById('edit-user-modal').style.display = 'block';
+    }
+
+    function openAddUserModal() {
+      document.getElementById('add-user-name').value = '';
+      document.getElementById('add-user-email').value = '';
+      document.getElementById('add-user-password').value = '';
+      document.getElementById('add-user-apartment').value = '';
+      document.getElementById('add-user-age').value = '';
+      document.getElementById('add-user-admin').value = 'false';
+      document.getElementById('add-user-modal').style.display = 'block';
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    // Form submissions
+    document.getElementById('edit-book-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const bookId = document.getElementById('edit-book-id').value;
+      const updates = {
+        title: document.getElementById('edit-book-title').value,
+        author: document.getElementById('edit-book-author').value,
+        cover: document.getElementById('edit-book-cover').value,
+        status: document.getElementById('edit-book-status').value,
+        updatedAt: new Date()
+      };
+
+      db.collection("books").doc(bookId).update(updates)
+        .then(() => {
+          alert("Book updated successfully");
+          closeModal('edit-book-modal');
+          loadBooks();
+        })
+        .catch(err => alert("Error updating book: " + err.message));
+    });
+
+    document.getElementById('add-book-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const title = document.getElementById('add-book-title').value;
+      const author = document.getElementById('add-book-author').value;
+      const cover = document.getElementById('add-book-cover').value;
+      const owner = document.getElementById('add-book-owner').value;
+      const status = document.getElementById('add-book-status').value;
+
+      if (!title || !author || !owner) {
+        return alert("Title, author and owner email are required!");
+      }
+
+      // First get owner details
+      db.collection("users").where("email", "==", owner).get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            throw new Error("Owner not found in users");
+          }
+          const ownerData = snapshot.docs[0].data();
+          
+          return db.collection("books").add({
+            title: title,
+            author: author,
+            cover: cover || '',
+            owner: owner,
+            ownerId: snapshot.docs[0].id,
+            ownerName: ownerData.name,
+            ownerApartment: ownerData.apartment,
+            status: status,
+            createdAt: new Date()
+          });
+        })
+        .then(() => {
+          alert("Book added successfully");
+          closeModal('add-book-modal');
+          loadBooks();
+        })
+        .catch(err => alert("Error adding book: " + err.message));
+    });
+
+    document.getElementById('edit-user-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const userId = document.getElementById('edit-user-id').value;
+      const updates = {
+        name: document.getElementById('edit-user-name').value,
+        email: document.getElementById('edit-user-email').value,
+        apartment: document.getElementById('edit-user-apartment').value,
+        age: parseInt(document.getElementById('edit-user-age').value)
+      };
+
+      db.collection("users").doc(userId).update(updates)
+        .then(() => {
+          alert("User updated successfully");
+          closeModal('edit-user-modal');
+          loadUsers();
+        })
+        .catch(err => alert("Error updating user: " + err.message));
+    });
+
+    document.getElementById('add-user-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('add-user-name').value;
+      const email = document.getElementById('add-user-email').value;
+      const password = document.getElementById('add-user-password').value;
+      const apartment = document.getElementById('add-user-apartment').value;
+      const age = parseInt(document.getElementById('add-user-age').value);
+      const isAdmin = document.getElementById('add-user-admin').value === 'true';
+
+      if (!name || !email || !password || !apartment || !age) {
+        return alert("All fields are required!");
+      }
+
+      // First create auth user
+      auth.createUserWithEmailAndPassword(email, password)
+        .then((cred) => {
+          return db.collection("users").doc(cred.user.uid).set({
+            name: name,
+            email: email,
+            apartment: apartment,
+            age: age,
+            isAdmin: isAdmin
+          });
+        })
+        .then(() => {
+          alert("User added successfully");
+          closeModal('add-user-modal');
+          loadUsers();
+        })
+        .catch(err => alert("Error adding user: " + err.message));
+    });
+
+    function deleteBook(bookId) {
+      if (confirm("Are you sure you want to delete this book?")) {
+        db.collection("books").doc(bookId).delete()
+          .then(() => {
+            alert("Book deleted successfully");
+            loadBooks();
+          })
+          .catch(err => alert("Error deleting book: " + err.message));
+      }
+    }
+
+    function deleteUser(userId) {
+      if (confirm("Are you sure you want to delete this user? This will also remove all their books.")) {
+        db.collection("books").where("ownerId", "==", userId).get()
+          .then(snapshot => {
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+              batch.delete(doc.ref);
+            });
+            return batch.commit();
+          })
+          .then(() => {
+            return db.collection("users").doc(userId).delete();
+          })
+          .then(() => {
+            alert("User and their books deleted successfully");
+            loadUsers();
+            loadBooks();
+          })
+          .catch(err => alert("Error deleting user: " + err.message));
+      }
+    }
+
+    window.onclick = function(event) {
+      if (event.target.className === 'modal') {
+        document.querySelectorAll('.modal').forEach(modal => {
+          modal.style.display = 'none';
+        });
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Add Book - ATS Library</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239C27B0'><path d='M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 18H6V4h2v8l2.5-1.5L13 12V4h5v16z'/></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body { 
+      font-family: Arial; 
+      padding: 20px; 
+      max-width: 1200px; 
+      margin: 0 auto;
+      background-color: #f5f5f5;
+    }
+    .hidden { display: none; }
+    input { 
+      margin: 5px 0; 
+      padding: 8px; 
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .faq-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #6a1b9a;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 100;
+    }
+    
+    .faq-button:hover {
+      background-color: #9C27B0;
+      transform: scale(1.1);
+    }
+    button { 
+      margin: 5px; 
+      padding: 8px 12px; 
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    #back-btn {
+      background-color: #607D8B;
+      color: white;
+    }
+    #add-book-btn {
+      background-color: #9C27B0;
+      color: white;
+      width: 100%;
+    }
+    .preview-cover {
+      width: 100px;
+      height: 150px;
+      object-fit: contain;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      background-color: #f5f5f5;
+    }
+    
+    /* New layout styles */
+    .page-container {
+      display: flex;
+      gap: 30px;
+    }
+    .form-container {
+      flex: 1;
+      min-width: 400px;
+    }
+    .video-container {
+      flex: 1;
+      min-width: 400px;
+    }
+    .video-wrapper {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      height: 0;
+      overflow: hidden;
+      background: #000;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .video-wrapper iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .video-header {
+      margin-top: 0;
+      color: #333;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #9C27B0;
+    }
+    .video-instructions {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    @media (max-width: 900px) {
+      .page-container {
+        flex-direction: column;
+      }
+      .form-container, .video-container {
+        min-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<button class="faq-button" onclick="window.location.href='faq.html'" title="FAQ">
+  <i class="fas fa-question"></i>
+</button>
+<div class="page-container">
+  <!-- Left Side: Add Book Form -->
+  <div class="form-container">
+    <h2>Add a New Book</h2>
+    <div id="user-info" class="hidden"></div>
+
+    <div id="book-section">
+      <input type="text" id="book-title" placeholder="Title">
+      <input type="text" id="book-author" placeholder="Author">
+      <input type="text" id="book-cover" placeholder="Cover URL (leave blank for default)">
+      <img id="cover-preview" class="preview-cover" src="https://cdn-icons-png.freepik.com/512/3488/3488109.png" alt="Cover Preview">
+      <button id="add-book-btn" onclick="addBook()">Add Book</button>
+    </div>
+
+    <button id="back-btn" onclick="window.location.href='index.html'">Back to Library</button>
+  </div>
+
+  <!-- Right Side: Video Tutorial -->
+  <div class="video-container">
+    <div class="video-instructions">
+      <h3 class="video-header">How to Add a Book</h3>
+      <div class="video-wrapper">
+        <iframe 
+          src="https://www.youtube.com/embed/bAM57inadGU?si=N8NdMpLxOSsD6T6I&autoplay=0" 
+          title="How to Add a Book - ATS Library" 
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          referrerpolicy="strict-origin-when-cross-origin" 
+          allowfullscreen>
+        </iframe>
+      </div>
+      <p style="text-align: center; margin-top: 15px; color: #666;">
+        Watch this short tutorial for step-by-step instructions
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDom_1RCdeMpLNRq1-hvilxo8rLIYOoDIQ",
+  authDomain: "ats-library-3d2aa.firebaseapp.com",
+  projectId: "ats-library-3d2aa",
+  storageBucket: "ats-library-3d2aa.appspot.com",
+  messagingSenderId: "583647909480",
+  appId: "1:583647909480:web:d963f832b73f8f4cca4ddd"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let userData = {};
+const DEFAULT_COVER = "https://cdn-icons-png.freepik.com/512/3488/3488109.png";
+
+// Update cover preview when URL changes
+document.getElementById('book-cover').addEventListener('input', function() {
+  const preview = document.getElementById('cover-preview');
+  preview.src = this.value || DEFAULT_COVER;
+});
+
+function toProperCase(str) {
+  if (!str) return '';
+  return str.replace(/\w\S*/g, function(txt) {
+    return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+}
+
+function addBook() {
+  const title = toProperCase(document.getElementById('book-title').value);
+  const author = toProperCase(document.getElementById('book-author').value);
+  let cover = document.getElementById('book-cover').value.trim();
+  const user = auth.currentUser;
+  
+  if (!user || !title || !author) {
+    return alert("Title and author are required!");
+  }
+
+  // Use default cover if none provided
+  if (!cover) {
+    cover = DEFAULT_COVER;
+  }
+
+  db.collection("books").add({
+    title: title.trim(),
+    author: author.trim(),
+    cover: cover,
+    owner: user.email,
+    ownerId: user.uid,
+    ownerApartment: userData.apartment || "",
+    ownerName: userData.name || "",
+    status: "available",
+    createdAt: new Date()
+  }).then(() => {
+    alert("Book added!");
+    document.getElementById('book-title').value = '';
+    document.getElementById('book-author').value = '';
+    document.getElementById('book-cover').value = '';
+    window.location.href = 'index.html';
+  }).catch(err => alert("Error adding book: " + err.message));
+}
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    db.collection("users").doc(user.uid).get().then(doc => {
+      userData = doc.data();
+      document.getElementById("user-info").textContent = `Logged in as ${toProperCase(userData.name)} (${userData.apartment})`;
+      document.getElementById("user-info").classList.remove("hidden");
+    });
+  } else {
+    window.location.href = 'index.html';
+  }
+});
+</script>
+
+</body>
+</html>
