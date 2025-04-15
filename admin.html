@@ -110,7 +110,7 @@
       font-weight: bold;
     }
 
-    /* Updated Modal Styles */
+    /* Modal Styles */
     .modal {
       display: none;
       position: fixed;
@@ -203,7 +203,7 @@
       gap: 10px;
     }
 
-    /* Updated Button Styles */
+    /* Button Styles */
     button {
       margin: 5px;
       padding: 8px 12px;
@@ -285,6 +285,54 @@
       margin: 0 3px;
       padding: 6px 10px;
     }
+
+    /* NEW ANALYTICS DASHBOARD STYLES */
+    .analytics-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .stat-card h3 {
+      margin-top: 0;
+      color: #666;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #9C27B0;
+    }
+
+    .chart-container {
+      grid-column: span 3;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+
+    .chart-container h3 {
+      margin-top: 0;
+      color: #666;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+
+    #popular-books-chart, #activity-timeline {
+      height: 300px;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -294,6 +342,7 @@
     <div class="tabs">
       <div class="tab active" onclick="showTab('books-tab')">Books Management</div>
       <div class="tab" onclick="showTab('users-tab')">Users Management</div>
+      <div class="tab" onclick="showTab('analytics-tab')">Analytics Dashboard</div>
     </div>
     
     <div id="books-tab" class="tab-content active">
@@ -338,6 +387,33 @@
         </thead>
         <tbody></tbody>
       </table>
+    </div>
+    
+    <div id="analytics-tab" class="tab-content">
+      <div class="analytics-container">
+        <div class="stat-card">
+          <h3>Total Users</h3>
+          <div class="stat-value" id="total-users">0</div>
+        </div>
+        <div class="stat-card">
+          <h3>Active Borrowers</h3>
+          <div class="stat-value" id="active-borrowers">0</div>
+        </div>
+        <div class="stat-card">
+          <h3>Total Books</h3>
+          <div class="stat-value" id="total-books">0</div>
+        </div>
+        
+        <div class="chart-container">
+          <h3>Most Borrowed Books</h3>
+          <div id="popular-books-chart"></div>
+        </div>
+        
+        <div class="chart-container">
+          <h3>Activity Timeline</h3>
+          <div id="activity-timeline"></div>
+        </div>
+      </div>
     </div>
     
     <a href="index.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Library</a>
@@ -572,6 +648,10 @@
       
       document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
       document.getElementById(tabId).classList.add('active');
+      
+      if (tabId === 'analytics-tab') {
+        loadAnalytics();
+      }
     }
 
     function loadBooks() {
@@ -901,6 +981,84 @@
           })
           .catch(err => alert("Error deleting user: " + err.message));
       }
+    }
+
+    // NEW ANALYTICS FUNCTIONS
+    function loadAnalytics() {
+      // Total Users
+      db.collection("users").get().then(snapshot => {
+        document.getElementById('total-users').textContent = snapshot.size;
+      });
+
+      // Active Borrowers (users who have borrowed books)
+      db.collection("books")
+        .where("status", "in", ["borrowed", "pending return"])
+        .get()
+        .then(snapshot => {
+          const borrowerEmails = new Set();
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.borrowedBy) borrowerEmails.add(data.borrowedBy);
+          });
+          document.getElementById('active-borrowers').textContent = borrowerEmails.size;
+        });
+
+      // Total Books
+      db.collection("books").get().then(snapshot => {
+        document.getElementById('total-books').textContent = snapshot.size;
+      });
+
+      // Most Borrowed Books
+      db.collection("books")
+        .orderBy("borrowCount", "desc")
+        .limit(5)
+        .get()
+        .then(snapshot => {
+          const books = [];
+          snapshot.forEach(doc => {
+            books.push(doc.data());
+          });
+          renderPopularBooksChart(books);
+        });
+    }
+
+    function renderPopularBooksChart(books) {
+      const container = document.getElementById('popular-books-chart');
+      container.innerHTML = '';
+      
+      if (books.length === 0) {
+        container.innerHTML = '<p>No borrowing data available</p>';
+        return;
+      }
+
+      const maxBorrows = Math.max(...books.map(b => b.borrowCount || 0));
+      
+      books.forEach(book => {
+        const bar = document.createElement('div');
+        bar.style.margin = '10px 0';
+        bar.style.display = 'flex';
+        bar.style.alignItems = 'center';
+        
+        const label = document.createElement('div');
+        label.style.width = '200px';
+        label.textContent = book.title;
+        bar.appendChild(label);
+        
+        const barGraph = document.createElement('div');
+        barGraph.style.height = '20px';
+        barGraph.style.backgroundColor = '#9C27B0';
+        barGraph.style.width = `${((book.borrowCount || 0) / maxBorrows) * 100}%`;
+        barGraph.style.borderRadius = '4px';
+        barGraph.style.marginLeft = '10px';
+        
+        const count = document.createElement('div');
+        count.style.marginLeft = '10px';
+        count.textContent = book.borrowCount || 0;
+        
+        bar.appendChild(barGraph);
+        bar.appendChild(count);
+        container.appendChild(bar);
+      });
     }
 
     window.onclick = function(event) {

@@ -22,7 +22,7 @@
     .faq-button {
       position: absolute;
       top: 20px;
-      right: 20px;
+      right: 70px;
       background-color: #6a1b9a;
       color: white;
       border: none;
@@ -86,6 +86,8 @@
     #user-info { 
       margin: 10px 0; 
       font-weight: bold; 
+      display: flex;
+      align-items: center;
     }
     .reading-status { 
       background-color: #fff3cd; 
@@ -295,7 +297,6 @@
       font-style: italic;
     }
 
-    /* NEW STYLES FOR RETURN INFO */
     .return-info {
       margin-top: 10px;
       padding: 10px;
@@ -358,7 +359,6 @@
       box-sizing: border-box;
     }
 
-    /* ONLY ADDED THIS FOR ADMIN LINK */
     .admin-link {
       display: inline-block;
       margin-left: 15px;
@@ -369,7 +369,71 @@
       text-decoration: none;
       font-size: 14px;
     }
-    /* END OF ADDED STYLE */
+
+    #notification-badge {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      font-size: 1.5rem;
+      z-index: 100;
+    }
+
+    #notification-count {
+      position: relative;
+      top: -10px;
+      right: -5px;
+      background-color: #f44336;
+      color: white;
+      border-radius: 50%;
+      padding: 3px 6px;
+      font-size: 12px;
+      margin-left: -10px;
+    }
+
+    #notification-dropdown {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .notification-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    .notification-item.unread {
+      background-color: #f5f5f5;
+    }
+
+    .notification-item:hover {
+      background-color: #f0f0f0;
+    }
+
+    .notification-item div {
+      white-space: pre-line;
+      line-height: 1.4;
+    }
+
+    .notification-time {
+      font-size: 10px;
+      color: #666;
+      margin-top: 3px;
+      opacity: 0.8;
+      line-height: 1.2;
+    }
 
     @media (max-width: 768px) {
       #auth-section {
@@ -377,6 +441,12 @@
       }
       #login-box, #signup-box, #recent-books {
         width: 100%;
+      }
+      #notification-dropdown {
+        right: -100px;
+      }
+      .faq-button {
+        right: 80px;
       }
     }
   </style>
@@ -387,6 +457,11 @@
 </button>
 <h2>ATS Residents' Library</h2>
 <div id="user-info" class="hidden"></div>
+<div id="notification-badge">
+  <i class="fas fa-bell"></i>
+  <span id="notification-count">0</span>
+  <div id="notification-dropdown"></div>
+</div>
 
 <div id="auth-section">
   <div id="login-box">
@@ -479,6 +554,7 @@ const db = firebase.firestore();
 
 let userData = {};
 let allBooks = [];
+let notifications = [];
 
 function toProperCase(str) {
   if (!str) return '';
@@ -576,6 +652,170 @@ function displayRecentBooks(books) {
   });
 }
 
+function formatCompactTime(dateString) {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    const now = new Date();
+    const isToday = date.getDate() === now.getDate() && 
+                   date.getMonth() === now.getMonth() && 
+                   date.getFullYear() === now.getFullYear();
+    
+    return isToday 
+      ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : date.toLocaleString([], { 
+          month: 'short', 
+          day: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+  } catch (e) {
+    console.error("Error formatting time:", e);
+    return '';
+  }
+}
+
+function checkForNotifications() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  db.collection("books")
+    .where("owner", "==", user.email)
+    .where("status", "==", "requested")
+    .get()
+    .then(snapshot => {
+      notifications = [];
+      snapshot.forEach(doc => {
+        const book = doc.data();
+        notifications.push({
+          id: doc.id,
+          type: 'request',
+          message: `${book.requestedByName} (${book.requestedByApartment}) requested to borrow "${book.title}"`,
+          timestamp: book.requestedAt || new Date(),
+          read: false,
+          bookId: doc.id,
+          targetTab: 'owned-books-section'
+        });
+      });
+      return db.collection("books")
+        .where("owner", "==", user.email)
+        .where("status", "==", "pending return")
+        .get();
+    })
+    .then(snapshot => {
+      snapshot.forEach(doc => {
+        const book = doc.data();
+        notifications.push({
+          id: doc.id,
+          type: 'return',
+          message: `${book.borrowedByName} (${book.borrowedByApartment}) wants to return "${book.title}"` +
+                   (book.returnMeetingTimeDisplay ? 
+                    `\n<span style="font-size: 0.60em; color: #666666; font-style: italic;">Scheduled for: ${formatCompactTime(book.returnMeetingTime)}</span>` : ''),
+          timestamp: book.returnRequestedAt || new Date(),
+          read: false,
+          bookId: doc.id,
+          targetTab: 'owned-books-section'
+        });
+      });
+      return db.collection("books")
+        .where("borrowedBy", "==", user.email)
+        .get();
+    })
+    .then(snapshot => {
+      snapshot.forEach(doc => {
+        const book = doc.data();
+        if (book.status === "borrowed" && book.meetingTime) {
+          const meetingTime = new Date(book.meetingTime);
+          if (meetingTime.getTime() - Date.now() < 86400000) {
+            notifications.push({
+              id: `meeting-${doc.id}`,
+              type: 'reminder',
+              message: `Don't forget to meet ${book.ownerName} to pickup "${book.title}"`,
+              timestamp: book.meetingTime,
+              read: false,
+              bookId: doc.id,
+              targetTab: 'borrowed-books-section'
+            });
+          }
+        }
+      });
+      updateNotificationUI();
+    })
+    .catch(err => console.error("Error loading notifications:", err));
+}
+
+function updateNotificationUI() {
+  const badge = document.getElementById('notification-badge');
+  const countElement = document.getElementById('notification-count');
+  const dropdown = document.getElementById('notification-dropdown');
+  
+  const unreadCount = notifications.filter(n => !n.read).length;
+  countElement.textContent = unreadCount;
+  
+  dropdown.innerHTML = notifications.length === 0 
+    ? '<div class="notification-item">No notifications</div>'
+    : notifications.map(notification => {
+        let timeDisplay = '';
+        if (notification.timestamp) {
+          try {
+            const date = new Date(notification.timestamp);
+            if (!isNaN(date.getTime())) {
+              timeDisplay = `<div class="notification-time">
+                ${formatCompactTime(notification.timestamp)}
+              </div>`;
+            }
+          } catch (e) {
+            console.error("Error formatting date:", e);
+          }
+        }
+        
+        const message = notification.message.includes('\n') 
+          ? notification.message.replace('\n', '<br>')
+          : notification.message;
+        
+        return `
+          <div class="notification-item ${notification.read ? '' : 'unread'}" 
+               onclick="handleNotificationClick('${notification.id}')">
+            <div>${message}</div>
+            ${timeDisplay}
+          </div>
+        `;
+      }).join('');
+}
+
+function handleNotificationClick(notificationId) {
+  const notification = notifications.find(n => n.id === notificationId);
+  if (!notification) return;
+
+  notification.read = true;
+  updateNotificationUI();
+  
+  // Navigate to the appropriate tab
+  showTab(notification.targetTab);
+  
+  // Close the dropdown
+  document.getElementById('notification-dropdown').style.display = 'none';
+}
+document.getElementById('notification-badge').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const dropdown = document.getElementById('notification-dropdown');
+  dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+  
+  // Mark all notifications as read when dropdown is opened
+  notifications.forEach(n => n.read = true);
+  updateNotificationUI();
+});
+
+document.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('notification-dropdown');
+  const badge = document.getElementById('notification-badge');
+  
+  if (!dropdown.contains(e.target) && !badge.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+
 auth.onAuthStateChanged(user => {
   if (user) {
     document.getElementById('logout-btn').classList.remove('hidden');
@@ -584,22 +824,25 @@ auth.onAuthStateChanged(user => {
     document.getElementById('signup-box').classList.add('hidden');
     document.getElementById('login-box').classList.add('hidden');
     document.getElementById('recent-books').classList.add('hidden');
+    document.getElementById('notification-badge').style.display = 'flex';
 
     db.collection("users").doc(user.uid).get().then(doc => {
       userData = doc.data();
-      document.getElementById("user-info").textContent = `Logged in as ${toProperCase(userData.name)} (${userData.apartment})`;
-      document.getElementById("user-info").classList.remove("hidden");
+      const userInfoElement = document.getElementById("user-info");
+      userInfoElement.textContent = `Logged in as ${toProperCase(userData.name)} (${userData.apartment})`;
+      userInfoElement.classList.remove("hidden");
 
-      // ONLY ADDED THIS BLOCK FOR ADMIN LINK
       if (userData.isAdmin) {
         const adminLink = document.createElement('a');
         adminLink.href = 'admin.html';
         adminLink.className = 'admin-link';
         adminLink.textContent = 'Admin Panel';
         adminLink.title = 'Go to Admin Panel';
-        document.getElementById("user-info").appendChild(adminLink);
+        userInfoElement.appendChild(adminLink);
       }
-      // END OF ADDED BLOCK
+      
+      checkForNotifications();
+      setInterval(checkForNotifications, 300000);
       
       loadBooks();
       showTab('available-books-section');
@@ -610,8 +853,9 @@ auth.onAuthStateChanged(user => {
     document.getElementById('book-tabs-wrapper').classList.add('hidden');
     document.getElementById('signup-box').classList.remove('hidden');
     document.getElementById('login-box').classList.remove('hidden');
-    document.getElementById("user-info").classList.add("hidden");
+    document.getElementById("user-info").classList.add('hidden');
     document.getElementById('recent-books').classList.remove('hidden');
+    document.getElementById('notification-badge').style.display = 'none';
     clearTables();
     loadRecentBooks();
   }
@@ -649,25 +893,22 @@ function updateSections() {
       } 
       else if (book.status === "borrowed" && book.borrowedByName) {
         statusText = `Borrowed by ${toProperCase(book.borrowedByName)} (${book.borrowedByApartment})`;
-        // Show return meeting info to owner if available
-        if (book.returnMeetingPlace && book.returnMeetingTime) {
-          const returnTime = new Date(book.returnMeetingTime).toLocaleString();
+        if (book.meetingPlace) {
           returnInfo = `
-            <div class="return-info">
-              <p><span class="return-place">Scheduled Return Place:</span> ${book.returnMeetingPlace}</p>
-              <p><span class="return-time">Scheduled Return Time:</span> ${returnTime}</p>
+            <div class="meeting-info">
+              <p><span class="meeting-place">Meeting Place:</span> ${book.meetingPlace}</p>
+              ${book.meetingTimeDisplay ? `<p><span class="meeting-time">Meeting Time:</span> ${book.meetingTimeDisplay}</p>` : ''}
             </div>
           `;
         }
       }
       else if (book.status === "pending return") {
         statusText = "Pending Return";
-        if (book.returnMeetingPlace && book.returnMeetingTime) {
-          const returnTime = new Date(book.returnMeetingTime).toLocaleString();
+        if (book.returnMeetingPlace) {
           returnInfo = `
             <div class="return-info">
               <p><span class="return-place">Return Meeting Place:</span> ${book.returnMeetingPlace}</p>
-              <p><span class="return-time">Return Meeting Time:</span> ${returnTime}</p>
+              ${book.returnMeetingTimeDisplay ? `<p><span class="return-time">Return Meeting Time:</span> ${book.returnMeetingTimeDisplay}</p>` : ''}
             </div>
           `;
         }
@@ -720,12 +961,11 @@ function updateSections() {
       } 
       else if (book.status === "pending return" && book.borrowedBy === user.email) {
         status = "Return Initiated";
-        if (book.returnMeetingPlace && book.returnMeetingTime) {
-          const returnTime = new Date(book.returnMeetingTime).toLocaleString();
+        if (book.returnMeetingPlace) {
           meetingInfo = `
             <div class="meeting-info">
               <p><span class="meeting-place">Return Meeting Place:</span> ${book.returnMeetingPlace}</p>
-              <p><span class="meeting-time">Return Meeting Time:</span> ${returnTime}</p>
+              ${book.returnMeetingTimeDisplay ? `<p><span class="meeting-time">Return Meeting Time:</span> ${book.returnMeetingTimeDisplay}</p>` : ''}
             </div>
           `;
         }
@@ -734,12 +974,11 @@ function updateSections() {
         status = "Borrowed";
         actions = `<button onclick="initiateReturn('${book.id}')">Return Book</button>`;
         
-        if (book.meetingPlace && book.meetingTime) {
-          const meetingTime = new Date(book.meetingTime).toLocaleString();
+        if (book.meetingPlace) {
           meetingInfo = `
             <div class="meeting-info">
               <p><span class="meeting-place">Meeting Place:</span> ${book.meetingPlace}</p>
-              <p><span class="meeting-time">Meeting Time:</span> ${meetingTime}</p>
+              ${book.meetingTimeDisplay ? `<p><span class="meeting-time">Meeting Time:</span> ${book.meetingTimeDisplay}</p>` : ''}
             </div>
           `;
         }
@@ -835,8 +1074,12 @@ function requestBook(id) {
       status: "requested",
       requestedBy: auth.currentUser.email,
       requestedByName: userData.name,
-      requestedByApartment: userData.apartment
-    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+      requestedByApartment: userData.apartment,
+      requestedAt: new Date()
+    }).then(() => {
+      loadBooks();
+      checkForNotifications();
+    }).catch(err => alert("Error: " + err.message));
   }
 }
 
@@ -846,15 +1089,18 @@ function cancelRequest(id) {
       status: "available",
       requestedBy: "",
       requestedByName: "",
-      requestedByApartment: ""
-    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+      requestedByApartment: "",
+      requestedAt: null
+    }).then(() => {
+      loadBooks();
+      checkForNotifications();
+    }).catch(err => alert("Error: " + err.message));
   }
 }
 
 function acceptRequest(id) {
   const book = allBooks.find(b => b.id === id);
   
-  // Create modal for meeting details
   const modal = document.createElement('div');
   modal.className = 'modal';
   modal.innerHTML = `
@@ -882,13 +1128,15 @@ function acceptRequest(id) {
   document.body.appendChild(modal);
   modal.style.display = 'block';
   
-  // Close modal when clicking X
+  const timeInput = document.getElementById('return-meeting-time');
+  timeInput.value = '';
+  timeInput.removeAttribute('value');
+  
   modal.querySelector('.close').onclick = function() {
     modal.style.display = 'none';
     document.body.removeChild(modal);
   };
   
-  // Close modal when clicking outside
   window.onclick = function(event) {
     if (event.target == modal) {
       modal.style.display = 'none';
@@ -918,19 +1166,22 @@ function confirmAcceptRequest(id) {
     requestedBy: "",
     requestedByName: "",
     requestedByApartment: "",
+    requestedAt: null,
     meetingPlace: meetingPlace,
-    meetingTime: meetingTime
+    meetingTime: meetingTime,
+    meetingTimeDisplay: new Date(meetingTime).toLocaleString(),
+    borrowCount: (book.borrowCount || 0) + 1
   }).then(() => {
     document.querySelector('.modal').style.display = 'none';
     document.body.removeChild(document.querySelector('.modal'));
     loadBooks();
+    checkForNotifications();
   }).catch(err => alert("Error: " + err.message));
 }
 
 function initiateReturn(id) {
   const book = allBooks.find(b => b.id === id);
   
-  // Create modal for return meeting details
   const modal = document.createElement('div');
   modal.className = 'modal';
   modal.innerHTML = `
@@ -958,13 +1209,16 @@ function initiateReturn(id) {
   document.body.appendChild(modal);
   modal.style.display = 'block';
   
-  // Close modal when clicking X
+  // Set default time to now + 1 hour
+  //const now = new Date();
+ //now.setHours(now.getHours() + 1);
+  document.getElementById('return-meeting-time').value = '';
+  
   modal.querySelector('.close').onclick = function() {
     modal.style.display = 'none';
     document.body.removeChild(modal);
   };
   
-  // Close modal when clicking outside
   window.onclick = function(event) {
     if (event.target == modal) {
       modal.style.display = 'none';
@@ -984,11 +1238,14 @@ function confirmInitiateReturn(id) {
   db.collection("books").doc(id).update({
     status: "pending return",
     returnMeetingPlace: returnMeetingPlace,
-    returnMeetingTime: returnMeetingTime
+    returnMeetingTime: returnMeetingTime,
+    returnMeetingTimeDisplay: new Date(returnMeetingTime).toLocaleString(),
+    returnRequestedAt: new Date()
   }).then(() => {
     document.querySelector('.modal').style.display = 'none';
     document.body.removeChild(document.querySelector('.modal'));
     loadBooks();
+    checkForNotifications();
   }).catch(err => alert("Error: " + err.message));
 }
 
@@ -999,8 +1256,12 @@ function declineRequest(id) {
       status: "available",
       requestedBy: "",
       requestedByName: "",
-      requestedByApartment: ""
-    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+      requestedByApartment: "",
+      requestedAt: null
+    }).then(() => {
+      loadBooks();
+      checkForNotifications();
+    }).catch(err => alert("Error: " + err.message));
   }
 }
 
@@ -1017,9 +1278,15 @@ function confirmReturn(id) {
       dueDate: null,
       meetingPlace: "",
       meetingTime: "",
+      meetingTimeDisplay: "",
       returnMeetingPlace: "",
-      returnMeetingTime: ""
-    }).then(loadBooks).catch(err => alert("Error: " + err.message));
+      returnMeetingTime: "",
+      returnMeetingTimeDisplay: "",
+      returnRequestedAt: null
+    }).then(() => {
+      loadBooks();
+      checkForNotifications();
+    }).catch(err => alert("Error: " + err.message));
   }
 }
 
@@ -1034,6 +1301,7 @@ function removeBook(id) {
       .then(() => {
         loadBooks();
         loadRecentBooks();
+        checkForNotifications();
       })
       .catch(err => alert("Error: " + err.message));
   }
