@@ -22,7 +22,7 @@
     .faq-button {
       position: absolute;
       top: 20px;
-      right: 120px;
+      right: 70px;
       background-color: #6a1b9a;
       color: white;
       border: none;
@@ -36,7 +36,6 @@
       justify-content: center;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 100;
-      transition: transform 0.2s ease;
     }
     
     .faq-button:hover {
@@ -371,46 +370,40 @@
       font-size: 14px;
     }
 
-    /* UPDATED Notification Styles */
     #notification-badge {
       position: absolute;
       right: 20px;
       top: 20px;
       cursor: pointer;
-      display: flex;
+      display: none;
       align-items: center;
       font-size: 1.5rem;
       z-index: 100;
-      color: #000;
-      background-color: transparent;
-      padding: 5px;
     }
 
     #notification-count {
-      position: absolute;
-      top: -5px;
+      position: relative;
+      top: -10px;
       right: -5px;
       background-color: #f44336;
       color: white;
       border-radius: 50%;
-      padding: 2px 6px;
+      padding: 3px 6px;
       font-size: 12px;
-      min-width: 18px;
-      text-align: center;
-      display: none;
+      margin-left: -10px;
     }
 
     #notification-dropdown {
       position: absolute;
       right: 0;
       top: 100%;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       width: 300px;
       max-height: 400px;
       overflow-y: auto;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
       z-index: 1000;
       display: none;
     }
@@ -419,7 +412,6 @@
       padding: 10px;
       border-bottom: 1px solid #eee;
       cursor: pointer;
-      transition: all 0.3s ease;
     }
 
     .notification-item.unread {
@@ -430,23 +422,16 @@
       background-color: #f0f0f0;
     }
 
-    .notification-main {
-      font-size: 14px;
+    .notification-item div {
+      white-space: pre-line;
       line-height: 1.4;
-    }
-
-    .notification-details {
-      font-size: 12px;
-      color: #666;
-      font-style: italic;
-      margin-top: 5px;
-      line-height: 1.3;
     }
 
     .notification-time {
       font-size: 10px;
-      color: #999;
+      color: #666;
       margin-top: 3px;
+      opacity: 0.8;
       line-height: 1.2;
     }
 
@@ -608,9 +593,6 @@
       .faq-button {
         right: 80px;
       }
-      #notification-badge {
-        right: 20px;
-      }
       .book-details-container {
         flex-direction: column;
       }
@@ -624,9 +606,9 @@
 <h2>ATS Residents' Library</h2>
 <div id="user-info" class="hidden"></div>
 <div id="notification-badge">
-  <i class="fas fa-bell" id="notification-icon"></i>
+  <i class="fas fa-bell"></i>
   <span id="notification-count">0</span>
-  <div id="notification-dropdown" style="display: none;"></div>
+  <div id="notification-dropdown"></div>
 </div>
 
 <div id="auth-section">
@@ -754,7 +736,6 @@ let userData = {};
 let allBooks = [];
 let notifications = [];
 let currentBookForReview = null;
-let isNotificationDropdownOpen = false;
 
 function toProperCase(str) {
   if (!str) return '';
@@ -900,131 +881,202 @@ function formatCompactTime(dateString) {
   }
 }
 
-function setupNotificationEvents() {
-  const badge = document.getElementById('notification-badge');
-  const dropdown = document.getElementById('notification-dropdown');
-  
-  badge.addEventListener('click', function(e) {
-    e.stopPropagation();
-    isNotificationDropdownOpen = !isNotificationDropdownOpen;
-    dropdown.style.display = isNotificationDropdownOpen ? 'block' : 'none';
-    
-    if (isNotificationDropdownOpen) {
-      checkForNotifications();
-    }
-  });
-
-  document.addEventListener('click', function(e) {
-    if (!badge.contains(e.target) && !dropdown.contains(e.target)) {
-      dropdown.style.display = 'none';
-      isNotificationDropdownOpen = false;
-    }
-  });
-}
-
 function checkForNotifications() {
   const user = auth.currentUser;
   if (!user) return;
 
-  db.collection("users").doc(user.uid).get().then(userDoc => {
-    if (userDoc.exists) {
-      userData.notifications = userDoc.data().notifications || [];
-      const unreadCount = userData.notifications.filter(n => !n.read).length;
-      
-      const countElement = document.getElementById('notification-count');
-      if (unreadCount > 0) {
-        countElement.textContent = unreadCount;
-        countElement.style.display = 'block';
-      } else {
-        countElement.style.display = 'none';
-      }
-      
-      document.getElementById('notification-badge').style.display = 'flex';
-      
+  db.collection("books")
+    .where("owner", "==", user.email)
+    .where("status", "==", "requested")
+    .get()
+    .then(snapshot => {
+      notifications = [];
+      snapshot.forEach(doc => {
+        const book = doc.data();
+        notifications.push({
+          id: doc.id,
+          type: 'request',
+          message: `${book.requestedByName} (${book.requestedByApartment}) requested to borrow "${book.title}"`,
+          timestamp: book.requestedAt || new Date(),
+          read: false,
+          bookId: doc.id,
+          targetTab: 'owned-books-section'
+        });
+      });
+      return db.collection("books")
+        .where("owner", "==", user.email)
+        .where("status", "==", "pending return")
+        .get();
+    })
+    .then(snapshot => {
+      snapshot.forEach(doc => {
+        const book = doc.data();
+        notifications.push({
+          id: doc.id,
+          type: 'return',
+          message: `${book.borrowedByName} (${book.borrowedByApartment}) wants to return "${book.title}"` +
+                   (book.returnMeetingTimeDisplay ? 
+                    `\n<span style="font-size: 0.85em; color: #666666; font-style: italic;">Scheduled for: ${formatCompactTime(book.returnMeetingTime)}</span>` : ''),
+          timestamp: book.returnRequestedAt || new Date(),
+          read: false,
+          bookId: doc.id,
+          targetTab: 'owned-books-section'
+        });
+      });
+      return db.collection("books")
+        .where("borrowedBy", "==", user.email)
+        .get();
+    })
+    .then(snapshot => {
+      snapshot.forEach(doc => {
+        const book = doc.data();
+        if (book.status === "borrowed" && book.meetingTime) {
+          const meetingTime = new Date(book.meetingTime);
+          if (meetingTime.getTime() - Date.now() < 86400000) {
+            notifications.push({
+              id: `meeting-${doc.id}`,
+              type: 'reminder',
+              message: `Don't forget to meet ${book.ownerName} to pickup "${book.title}"`,
+              timestamp: book.meetingTime,
+              read: false,
+              bookId: doc.id,
+              targetTab: 'borrowed-books-section'
+            });
+          }
+        }
+      });
       updateNotificationUI();
-    }
-  }).catch(err => console.error("Error loading notifications:", err));
+    })
+    .catch(err => console.error("Error loading notifications:", err));
 }
 
-function updateNotificationUI() {
-  const dropdown = document.getElementById('notification-dropdown');
-  const unreadNotifications = (userData.notifications || []).filter(n => !n.read);
-  
-  if (unreadNotifications.length === 0) {
-    dropdown.innerHTML = `
-      <div class="notification-item">
-        <div class="notification-main">No notifications</div>
-        <div class="notification-details">You're all caught up!</div>
-      </div>
-    `;
-  } else {
-    dropdown.innerHTML = unreadNotifications.map(notification => {
-      const timeDisplay = notification.timestamp 
-        ? `<div class="notification-time">${formatCompactTime(notification.timestamp)}</div>`
-        : '';
-      
-      const detailsDisplay = notification.details 
-        ? `<div class="notification-details">${notification.details.replace(/\n/g, '<br>')}</div>`
-        : '';
-      
-      return `
-        <div class="notification-item unread" 
-             onclick="handleNotificationClick('${notification.id || notification.bookId}', '${notification.type || ''}')">
-          <div class="notification-main">${notification.message}</div>
-          ${detailsDisplay}
-          ${timeDisplay}
-        </div>
-      `;
-    }).join('');
-  }
+function markNotificationAsRead(userId, notification) {
+  return db.collection("users").doc(userId).update({
+    notifications: firebase.firestore.FieldValue.arrayRemove(notification),
+    notifications: firebase.firestore.FieldValue.arrayUnion({
+      ...notification,
+      read: true
+    })
+  });
 }
 
 function handleNotificationClick(notificationId, type) {
-  const user = auth.currentUser;
-  if (!user) return;
-
-  const notificationIndex = userData.notifications.findIndex(n => 
-    (n.id === notificationId || n.bookId === notificationId) && (!type || n.type === type));
-
-  if (notificationIndex !== -1) {
-    const notification = userData.notifications[notificationIndex];
-    
-    const updatedNotification = {...notification, read: true};
-    
-    db.collection("users").doc(user.uid).update({
-      notifications: firebase.firestore.FieldValue.arrayRemove(notification)
-    }).then(() => {
-      return db.collection("users").doc(user.uid).update({
-        notifications: firebase.firestore.FieldValue.arrayUnion(updatedNotification)
-      });
-    }).then(() => {
-      userData.notifications.splice(notificationIndex, 1, updatedNotification);
-      updateNotificationUI();
-      
-      const unreadCount = userData.notifications.filter(n => !n.read).length;
-      const countElement = document.getElementById('notification-count');
-      if (unreadCount > 0) {
-        countElement.textContent = unreadCount;
-        countElement.style.display = 'block';
-      } else {
-        countElement.style.display = 'none';
-      }
-    }).catch(err => {
-      console.error("Error updating notification:", err);
-    });
+  // Handle request_declined notifications (existing functionality)
+  if (type === "request_declined") {
+    const notification = userData.notifications?.find(n => 
+      (n.id === notificationId || n.bookId === notificationId) && n.type === "request_declined");
+    if (notification) {
+      markNotificationAsRead(auth.currentUser.uid, notification)
+        .then(() => {
+          const index = userData.notifications.findIndex(n => 
+            (n.id === notificationId || n.bookId === notificationId) && n.type === "request_declined");
+          if (index !== -1) {
+            userData.notifications[index].read = true;
+          }
+          updateNotificationUI();
+        });
+    }
+    showTab('available-books-section');
+  } 
+  // NEW: Handle request_cancelled notifications
+  else if (type === "request_cancelled") {
+    const notification = userData.notifications?.find(n => 
+      (n.id === notificationId || n.bookId === notificationId) && n.type === "request_cancelled");
+    if (notification) {
+      markNotificationAsRead(auth.currentUser.uid, notification)
+        .then(() => {
+          const index = userData.notifications.findIndex(n => 
+            (n.id === notificationId || n.bookId === notificationId) && n.type === "request_cancelled");
+          if (index !== -1) {
+            userData.notifications[index].read = true;
+          }
+          updateNotificationUI();
+        });
+    }
+    showTab('owned-books-section');
   }
+  // Handle all other notification types (existing functionality)
+  else {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (!notification) return;
 
-  let targetTab = 'available-books-section';
-  if (type === 'request' || type === 'return') {
-    targetTab = 'owned-books-section';
-  } else if (type === 'reminder' || type === 'request_accepted' || type === 'return_confirmed') {
-    targetTab = 'borrowed-books-section';
+    notification.read = true;
+    updateNotificationUI();
+    
+    switch(notification.type) {
+      case 'request':
+        showTab('owned-books-section');
+        break;
+      case 'return':
+        showTab('owned-books-section');
+        break;
+      case 'reminder':
+        showTab('borrowed-books-section');
+        break;
+    }
   }
-
-  showTab(targetTab);
+  
   document.getElementById('notification-dropdown').style.display = 'none';
-  isNotificationDropdownOpen = false;
 }
+
+function updateNotificationUI() {
+  const badge = document.getElementById('notification-badge');
+  const countElement = document.getElementById('notification-count');
+  const dropdown = document.getElementById('notification-dropdown');
+  
+  const allNotifications = [
+    ...notifications,
+    ...(userData.notifications || []).filter(n => !n.read)
+  ];
+  
+  const unreadCount = allNotifications.filter(n => !n.read).length;
+  countElement.textContent = unreadCount;
+  
+  dropdown.innerHTML = allNotifications.length === 0 
+    ? '<div class="notification-item">No notifications</div>'
+    : allNotifications.map(notification => {
+        let timeDisplay = '';
+        if (notification.timestamp) {
+          try {
+            const date = new Date(notification.timestamp);
+            if (!isNaN(date.getTime())) {
+              timeDisplay = `<div class="notification-time">
+                ${formatCompactTime(notification.timestamp)}
+              </div>`;
+            }
+          } catch (e) {
+            console.error("Error formatting date:", e);
+          }
+        }
+        
+        const message = notification.message.includes('\n') 
+          ? notification.message.replace('\n', '<br>')
+          : notification.message;
+        
+        return `
+          <div class="notification-item ${notification.read ? '' : 'unread'}" 
+               onclick="handleNotificationClick('${notification.id || notification.bookId}', '${notification.type || ''}')">
+            <div>${message}</div>
+            ${timeDisplay}
+          </div>
+        `;
+      }).join('');
+}
+
+document.getElementById('notification-badge').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const dropdown = document.getElementById('notification-dropdown');
+  dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+});
+
+document.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('notification-dropdown');
+  const badge = document.getElementById('notification-badge');
+  
+  if (!dropdown.contains(e.target) && !badge.contains(e.target)) {
+    dropdown.style.display = 'none';
+  }
+});
 
 function showBookDetails(bookId) {
   const book = allBooks.find(b => b.id === bookId);
@@ -1200,176 +1252,176 @@ function updateSections() {
       : 'No reviews';
 
     // Owned Books Section
-    if (book.owner === user.email) {
-      const row = document.createElement('tr');
-      let statusText = toProperCase(book.status);
-      let actions = '';
-      let meetingInfo = '';
-      
-      if (book.status === "requested") {
-        statusText = `Requested by ${toProperCase(book.requestedByName)} (${book.requestedByApartment})`;
-        actions = `<button onclick="acceptRequest('${book.id}')">Accept</button>
-                   <button onclick="declineRequest('${book.id}')">Decline</button>`;
-      }
-      else if (book.status === "meeting scheduled") {
-        statusText = `Meeting Scheduled with ${toProperCase(book.requestedByName)}`;
-        if (book.meetingPlace) {
-          meetingInfo = `
-            <div class="meeting-info">
-              <p><span class="meeting-place">Meeting Place:</span> ${book.meetingPlace}</p>
-              ${book.meetingTimeDisplay ? `<p><span class="meeting-time">Meeting Time:</span> ${book.meetingTimeDisplay}</p>` : ''}
-            </div>
-          `;
-        }
-      }
-      else if (book.status === "borrowed") {
-        statusText = `Borrowed by ${toProperCase(book.borrowedByName)} (${book.borrowedByApartment})`;
-        actions = `<button onclick="showBookDetails('${book.id}')">Details</button>`;
-      }
-      else if (book.status === "pending return") {
-        statusText = `Return Initiated by ${toProperCase(book.borrowedByName)}`;
-        actions = `<button onclick="confirmReturn('${book.id}')">Confirm Return</button>
-                   <button onclick="showBookDetails('${book.id}')">Details</button>`;
-        
-        if (book.returnMeetingPlace) {
-          meetingInfo = `
-            <div class="return-info">
-              <p><span class="return-place">Return Place:</span> ${book.returnMeetingPlace}</p>
-              ${book.returnMeetingTimeDisplay ? `<p><span class="return-time">Return Time:</span> ${book.returnMeetingTimeDisplay}</p>` : ''}
-            </div>
-          `;
-        }
-      }
-      else if (book.status === "available" || book.status === "reading") {
-        actions = `<button class="reading-toggle" onclick="toggleReadingStatus('${book.id}', ${book.status === 'reading'})">
-                    ${book.status === 'reading' ? 'Make Available' : 'Mark as Reading'}
-                  </button>
-                  <button onclick="removeBook('${book.id}')">Remove</button>
-                  <button onclick="showBookDetails('${book.id}')">Details</button>`;
-      }
-      
-      row.innerHTML = `
-        <td>
-          <div class="book-title-with-cover">
-            ${coverHtml}
-            ${toProperCase(book.title)}
-          </div>
-        </td>
-        <td>${toProperCase(book.author)}</td>
-        <td>${statusText}${meetingInfo}</td>
-        <td>${ratingHtml}</td>
-        <td>${actions}</td>
+if (book.owner === user.email) {
+  const row = document.createElement('tr');
+  let statusText = toProperCase(book.status);
+  let actions = '';
+  let meetingInfo = '';
+  
+  if (book.status === "requested") {
+    statusText = `Requested by ${toProperCase(book.requestedByName)} (${book.requestedByApartment})`;
+    actions = `<button onclick="acceptRequest('${book.id}')">Accept</button>
+               <button onclick="declineRequest('${book.id}')">Decline</button>`;
+  }
+  else if (book.status === "meeting scheduled") {
+    statusText = `Meeting Scheduled with ${toProperCase(book.requestedByName)}`;
+    if (book.meetingPlace) {
+      meetingInfo = `
+        <div class="meeting-info">
+          <p><span class="meeting-place">Meeting Place:</span> ${book.meetingPlace}</p>
+          ${book.meetingTimeDisplay ? `<p><span class="meeting-time">Meeting Time:</span> ${book.meetingTimeDisplay}</p>` : ''}
+        </div>
       `;
-      owned.appendChild(row);
     }
+  }
+  else if (book.status === "borrowed") {
+    statusText = `Borrowed by ${toProperCase(book.borrowedByName)} (${book.borrowedByApartment})`;
+    actions = `<button onclick="showBookDetails('${book.id}')">Details</button>`;
+  }
+  else if (book.status === "pending return") {
+    statusText = `Return Initiated by ${toProperCase(book.borrowedByName)}`;
+    actions = `<button onclick="confirmReturn('${book.id}')">Confirm Return</button>
+               <button onclick="showBookDetails('${book.id}')">Details</button>`;
+    
+    if (book.returnMeetingPlace) {
+      meetingInfo = `
+        <div class="return-info">
+          <p><span class="return-place">Return Place:</span> ${book.returnMeetingPlace}</p>
+          ${book.returnMeetingTimeDisplay ? `<p><span class="return-time">Return Time:</span> ${book.returnMeetingTimeDisplay}</p>` : ''}
+        </div>
+      `;
+    }
+  }
+  else if (book.status === "available" || book.status === "reading") {
+    actions = `<button class="reading-toggle" onclick="toggleReadingStatus('${book.id}', ${book.status === 'reading'})">
+                ${book.status === 'reading' ? 'Make Available' : 'Mark as Reading'}
+              </button>
+              <button onclick="removeBook('${book.id}')">Remove</button>
+              <button onclick="showBookDetails('${book.id}')">Details</button>`;
+  }
+  
+  row.innerHTML = `
+    <td>
+      <div class="book-title-with-cover">
+        ${coverHtml}
+        ${toProperCase(book.title)}
+      </div>
+    </td>
+    <td>${toProperCase(book.author)}</td>
+    <td>${statusText}${meetingInfo}</td>
+    <td>${ratingHtml}</td>
+    <td>${actions}</td>
+  `;
+  owned.appendChild(row);
+}
 
     // Borrowed Books Section
-    if ((book.borrowedBy === user.email) || (book.requestedBy === user.email)) {
-      const row = document.createElement('tr');
-      let status, actions = '';
-      let meetingInfo = '';
-      
-      if (book.status === "requested" && book.requestedBy === user.email) {
-        status = "Requested to Borrow";
-        row.classList.add('requested-status');
-        actions = `<button onclick="cancelRequest('${book.id}')">Cancel Request</button>`;
-      } 
-      else if (book.status === "meeting scheduled" && book.requestedBy === user.email) {
-        status = "Meeting Scheduled";
-        actions = `<button onclick="confirmBorrowed('${book.id}')">Confirm Borrowed</button>
-                   <button onclick="cancelBorrowRequest('${book.id}')" style="background-color: #f44336;">Cancel Request</button>`;
+if ((book.borrowedBy === user.email) || (book.requestedBy === user.email)) {
+  const row = document.createElement('tr');
+  let status, actions = '';
+  let meetingInfo = '';
+  
+  if (book.status === "requested" && book.requestedBy === user.email) {
+    status = "Requested to Borrow";
+    row.classList.add('requested-status');
+    actions = `<button onclick="cancelRequest('${book.id}')">Cancel Request</button>`;
+  } 
+  else if (book.status === "meeting scheduled" && book.requestedBy === user.email) {
+    status = "Meeting Scheduled";
+    actions = `<button onclick="confirmBorrowed('${book.id}')">Confirm Borrowed</button>
+               <button onclick="cancelBorrowRequest('${book.id}')" style="background-color: #f44336;">Cancel Request</button>`;
 
-        if (book.meetingPlace) {
-          meetingInfo = `
-            <div class="meeting-info">
-              <p><span class="meeting-place">Meeting Place:</span> ${book.meetingPlace}</p>
-              ${book.meetingTimeDisplay ? `<p><span class="meeting-time">Meeting Time:</span> ${book.meetingTimeDisplay}</p>` : ''}
-            </div>
-          `;
-        }
-      }
-      else if (book.status === "borrowed" && book.borrowedBy === user.email) {
-        status = "Borrowed";
-        actions = `<button onclick="initiateReturn('${book.id}')">Return Book</button>`;
-      }
-      else if (book.status === "pending return" && book.borrowedBy === user.email) {
-        status = "Return in Progress";
-        actions = `<button onclick="showBookDetails('${book.id}')">Details</button>`;
-        
-        if (book.returnMeetingPlace) {
-          meetingInfo = `
-            <div class="return-info">
-              <p><span class="return-place">Return Place:</span> ${book.returnMeetingPlace}</p>
-              ${book.returnMeetingTimeDisplay ? `<p><span class="return-time">Return Time:</span> ${book.returnMeetingTimeDisplay}</p>` : ''}
-            </div>
-          `;
-        }
-      }
-      
-      actions += `<button onclick="showBookDetails('${book.id}')">Details</button>`;
-      
-      row.innerHTML = `
-        <td>
-          <div class="book-title-with-cover">
-            ${coverHtml}
-            ${toProperCase(book.title)}
-          </div>
-        </td>
-        <td>${toProperCase(book.author)}</td>
-        <td>${status}${meetingInfo}</td>
-        <td>${actions}</td>
+    if (book.meetingPlace) {
+      meetingInfo = `
+        <div class="meeting-info">
+          <p><span class="meeting-place">Meeting Place:</span> ${book.meetingPlace}</p>
+          ${book.meetingTimeDisplay ? `<p><span class="meeting-time">Meeting Time:</span> ${book.meetingTimeDisplay}</p>` : ''}
+        </div>
       `;
-      borrowed.appendChild(row);
     }
+  }
+  else if (book.status === "borrowed" && book.borrowedBy === user.email) {
+    status = "Borrowed";
+    actions = `<button onclick="initiateReturn('${book.id}')">Return Book</button>`;
+  }
+  else if (book.status === "pending return" && book.borrowedBy === user.email) {
+    status = "Return in Progress";
+    actions = `<button onclick="showBookDetails('${book.id}')">Details</button>`;
+    
+    if (book.returnMeetingPlace) {
+      meetingInfo = `
+        <div class="return-info">
+          <p><span class="return-place">Return Place:</span> ${book.returnMeetingPlace}</p>
+          ${book.returnMeetingTimeDisplay ? `<p><span class="return-time">Return Time:</span> ${book.returnMeetingTimeDisplay}</p>` : ''}
+        </div>
+      `;
+    }
+  }
+  
+  actions += `<button onclick="showBookDetails('${book.id}')">Details</button>`;
+  
+  row.innerHTML = `
+    <td>
+      <div class="book-title-with-cover">
+        ${coverHtml}
+        ${toProperCase(book.title)}
+      </div>
+    </td>
+    <td>${toProperCase(book.author)}</td>
+    <td>${status}${meetingInfo}</td>
+    <td>${actions}</td>
+  `;
+  borrowed.appendChild(row);
+}
 
     // Available Books Section
-    if (book.owner !== user.email) {
-      const row = document.createElement('tr');
-      let statusText, actions = '';
-      
-      if (book.status === "requested") {
-        statusText = `Requested by ${toProperCase(book.requestedByName)}`;
-        actions = `<span class="not-available">Not Available</span>`;
-      }
-      else if (book.status === "meeting scheduled") {
-        statusText = `Meeting Scheduled`;
-        actions = `<span class="not-available">Not Available</span>`;
-      }
-      else if (book.status === "borrowed") {
-        statusText = `Borrowed by ${toProperCase(book.borrowedByName)}`;
-        actions = `<span class="not-available">Not Available</span>`;
-      }
-      else if (book.status === "pending return") {
-        statusText = `Return in Progress`;
-        actions = `<span class="not-available">Not Available</span>`;
-      }
-      else if (book.status === "reading") {
-        statusText = `${toProperCase(book.ownerName || book.owner)} currently reading`;
-        actions = `<span class="not-available">Not Available</span>`;
-        row.classList.add('reading-indicator');
-      }
-      else if (book.status === "available") {
-        statusText = "Available";
-        actions = `<button onclick="requestBook('${book.id}')">Request</button>`;
-      }
-      
-      actions += `<button onclick="showBookDetails('${book.id}')">Details</button>`;
-      
-      row.innerHTML = `
-        <td>
-          <div class="book-title-with-cover">
-            ${coverHtml}
-            ${toProperCase(book.title)}
-          </div>
-        </td>
-        <td>${toProperCase(book.author)}</td>
-        <td>${toProperCase(book.ownerName || book.owner)} (${book.ownerApartment})</td>
-        <td>${ratingHtml}</td>
-        <td>${statusText}</td>
-        <td>${actions}</td>
-      `;
-      available.appendChild(row);
-    }
+if (book.owner !== user.email) {
+  const row = document.createElement('tr');
+  let statusText, actions = '';
+  
+  if (book.status === "requested") {
+    statusText = `Requested by ${toProperCase(book.requestedByName)}`;
+    actions = `<span class="not-available">Not Available</span>`;
+  }
+  else if (book.status === "meeting scheduled") {
+    statusText = `Meeting Scheduled`;
+    actions = `<span class="not-available">Not Available</span>`;
+  }
+  else if (book.status === "borrowed") {
+    statusText = `Borrowed by ${toProperCase(book.borrowedByName)}`;
+    actions = `<span class="not-available">Not Available</span>`;
+  }
+  else if (book.status === "pending return") {
+    statusText = `Return in Progress`;
+    actions = `<span class="not-available">Not Available</span>`;
+  }
+  else if (book.status === "reading") {
+    statusText = `${toProperCase(book.ownerName || book.owner)} currently reading`;
+    actions = `<span class="not-available">Not Available</span>`;
+    row.classList.add('reading-indicator');
+  }
+  else if (book.status === "available") {
+    statusText = "Available";
+    actions = `<button onclick="requestBook('${book.id}')">Request</button>`;
+  }
+  
+  actions += `<button onclick="showBookDetails('${book.id}')">Details</button>`;
+  
+  row.innerHTML = `
+    <td>
+      <div class="book-title-with-cover">
+        ${coverHtml}
+        ${toProperCase(book.title)}
+      </div>
+    </td>
+    <td>${toProperCase(book.author)}</td>
+    <td>${toProperCase(book.ownerName || book.owner)} (${book.ownerApartment})</td>
+    <td>${ratingHtml}</td>
+    <td>${statusText}</td>
+    <td>${actions}</td>
+  `;
+  available.appendChild(row);
+}
   });
 }
 
@@ -1435,34 +1487,11 @@ function confirmAcceptRequest(id) {
     return alert("Please select a meeting time");
   }
   
-  const book = allBooks.find(b => b.id === id);
-  
   db.collection("books").doc(id).update({
     status: "meeting scheduled",
     meetingPlace: meetingPlace,
     meetingTime: meetingTime,
     meetingTimeDisplay: new Date(meetingTime).toLocaleString()
-  }).then(() => {
-    // Notify the borrower
-    if (book.requestedBy) {
-      db.collection("users").where("email", "==", book.requestedBy).get()
-        .then(snapshot => {
-          if (!snapshot.empty) {
-            const borrower = snapshot.docs[0];
-            const notification = {
-              type: "request_accepted",
-              message: `${userData.name} accepted your request to borrow "${book.title}"`,
-              details: `Meeting Place: ${meetingPlace}\nScheduled for: ${new Date(meetingTime).toLocaleString()}`,
-              timestamp: new Date(),
-              read: false,
-              bookId: id
-            };
-            return db.collection("users").doc(borrower.id).update({
-              notifications: firebase.firestore.FieldValue.arrayUnion(notification)
-            });
-          }
-        });
-    }
   }).then(() => {
     closeModal('accept-request-modal');
     loadBooks();
@@ -1507,26 +1536,6 @@ function requestBook(id) {
       requestedByName: userData.name,
       requestedByApartment: userData.apartment,
       requestedAt: new Date()
-    }).then(() => {
-      // Notify the owner about the request
-      if (book.owner) {
-        db.collection("users").where("email", "==", book.owner).get()
-          .then(snapshot => {
-            if (!snapshot.empty) {
-              const owner = snapshot.docs[0];
-              const notification = {
-                type: "request",
-                message: `${userData.name} (${userData.apartment}) wants to borrow "${book.title}"`,
-                timestamp: new Date(),
-                read: false,
-                bookId: id
-              };
-              return db.collection("users").doc(owner.id).update({
-                notifications: firebase.firestore.FieldValue.arrayUnion(notification)
-              });
-            }
-          });
-      }
     }).then(() => {
       loadBooks();
       checkForNotifications();
@@ -1648,35 +1657,12 @@ function confirmInitiateReturn(id) {
     return alert("Please select a meeting time");
   }
   
-  const book = allBooks.find(b => b.id === id);
-  
   db.collection("books").doc(id).update({
     status: "pending return",
     returnMeetingPlace: returnMeetingPlace,
     returnMeetingTime: returnMeetingTime,
     returnMeetingTimeDisplay: new Date(returnMeetingTime).toLocaleString(),
     returnRequestedAt: new Date()
-  }).then(() => {
-    // Notify the owner about the return request
-    if (book.owner) {
-      db.collection("users").where("email", "==", book.owner).get()
-        .then(snapshot => {
-          if (!snapshot.empty) {
-            const owner = snapshot.docs[0];
-            const notification = {
-              type: "return",
-              message: `${userData.name} (${userData.apartment}) wants to return "${book.title}"`,
-              details: `Scheduled for: ${new Date(returnMeetingTime).toLocaleString()}`,
-              timestamp: new Date(),
-              read: false,
-              bookId: id
-            };
-            return db.collection("users").doc(owner.id).update({
-              notifications: firebase.firestore.FieldValue.arrayUnion(notification)
-            });
-          }
-        });
-    }
   }).then(() => {
     closeModal('initiate-return-modal');
     loadBooks();
@@ -1686,8 +1672,6 @@ function confirmInitiateReturn(id) {
 
 function confirmReturn(id) {
   if (confirm("Confirm that the book has been returned?")) {
-    const book = allBooks.find(b => b.id === id);
-    
     db.collection("books").doc(id).update({
       status: "available",
       borrowedBy: "",
@@ -1704,26 +1688,6 @@ function confirmReturn(id) {
       returnMeetingTime: "",
       returnMeetingTimeDisplay: "",
       returnRequestedAt: null
-    }).then(() => {
-      // Notify the borrower that return is confirmed
-      if (book.borrowedBy) {
-        db.collection("users").where("email", "==", book.borrowedBy).get()
-          .then(snapshot => {
-            if (!snapshot.empty) {
-              const borrower = snapshot.docs[0];
-              const notification = {
-                type: "return_confirmed",
-                message: `${userData.name} confirmed the return of "${book.title}"`,
-                timestamp: new Date(),
-                read: false,
-                bookId: id
-              };
-              return db.collection("users").doc(borrower.id).update({
-                notifications: firebase.firestore.FieldValue.arrayUnion(notification)
-              });
-            }
-          });
-      }
     }).then(() => {
       loadBooks();
       checkForNotifications();
@@ -1839,7 +1803,6 @@ auth.onAuthStateChanged(user => {
         userInfoElement.appendChild(adminLink);
       }
       
-      setupNotificationEvents();
       checkForNotifications();
       setInterval(checkForNotifications, 300000);
       

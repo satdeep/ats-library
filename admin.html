@@ -286,7 +286,7 @@
       padding: 6px 10px;
     }
 
-    /* NEW ANALYTICS DASHBOARD STYLES */
+/* NEW ANALYTICS DASHBOARD STYLES */
     .analytics-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -333,6 +333,39 @@
       height: 300px;
       width: 100%;
     }
+
+    /* Review Management Styles */
+    .review-item {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 15px;
+    }
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .review-author {
+      font-weight: bold;
+      color: #9C27B0;
+    }
+    .review-date {
+      color: #888;
+      font-size: 0.9em;
+    }
+    .review-rating {
+      color: #ff9800;
+      margin-bottom: 5px;
+    }
+    .review-content {
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .review-book {
+      font-style: italic;
+      color: #666;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -343,6 +376,7 @@
       <div class="tab active" onclick="showTab('books-tab')">Books Management</div>
       <div class="tab" onclick="showTab('users-tab')">Users Management</div>
       <div class="tab" onclick="showTab('analytics-tab')">Analytics Dashboard</div>
+      <div class="tab" onclick="showTab('reviews-tab')">Reviews Management</div>
     </div>
     
     <div id="books-tab" class="tab-content active">
@@ -360,6 +394,7 @@
             <th>Author</th>
             <th>Owner</th>
             <th>Status</th>
+            <th>Rating</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -414,6 +449,13 @@
           <div id="activity-timeline"></div>
         </div>
       </div>
+    </div>
+
+    <div id="reviews-tab" class="tab-content">
+      <div class="search-container">
+        <input type="text" id="review-search" placeholder="Search reviews..." oninput="filterReviews()">
+      </div>
+      <div id="reviews-list"></div>
     </div>
     
     <a href="index.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Library</a>
@@ -586,6 +628,7 @@
     let currentUser = null;
     let allBooks = [];
     let allUsers = [];
+    let allReviews = [];
 
     function toProperCase(str) {
       if (!str) return '';
@@ -628,6 +671,7 @@
               currentUser = user;
               loadBooks();
               loadUsers();
+              loadReviews();
             } else {
               alert("You don't have admin privileges");
               window.location.href = 'index.html';
@@ -648,7 +692,7 @@
       
       document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
       document.getElementById(tabId).classList.add('active');
-      
+
       if (tabId === 'analytics-tab') {
         loadAnalytics();
       }
@@ -658,7 +702,28 @@
       db.collection("books").orderBy("title").get()
         .then(snapshot => {
           allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          renderBooks(allBooks);
+          
+          // Get ratings for each book
+          const ratingPromises = allBooks.map(book => {
+            return db.collection("books").doc(book.id).collection("reviews").get()
+              .then(reviewsSnapshot => {
+                let totalRating = 0;
+                let reviewCount = 0;
+                reviewsSnapshot.forEach(reviewDoc => {
+                  const review = reviewDoc.data();
+                  totalRating += review.rating;
+                  reviewCount++;
+                });
+                book.averageRating = reviewCount > 0 ? (totalRating / reviewCount).toFixed(1) : null;
+                book.reviewCount = reviewCount;
+                return book;
+              });
+          });
+          
+          return Promise.all(ratingPromises);
+        })
+        .then(booksWithRatings => {
+          renderBooks(booksWithRatings);
         })
         .catch(err => console.error("Error loading books:", err));
     }
@@ -668,7 +733,7 @@
       tbody.innerHTML = '';
 
       if (books.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No books found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No books found</td></tr>';
         return;
       }
 
@@ -678,6 +743,9 @@
           : `<div class="book-cover-container"></div>`;
         
         const statusHtml = formatStatus(book.status, book);
+        const ratingHtml = book.averageRating 
+          ? `${book.averageRating} ★ (${book.reviewCount})`
+          : 'No reviews';
         
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -686,6 +754,7 @@
           <td>${toProperCase(book.author) || ''}</td>
           <td>${toProperCase(book.ownerName || book.owner) || ''} (${book.ownerApartment || ''})</td>
           <td>${statusHtml}</td>
+          <td>${ratingHtml}</td>
           <td class="book-actions">
             <button class="edit-btn" onclick="openEditBookModal('${book.id}')">
               <i class="fas fa-edit"></i> Edit
@@ -748,6 +817,91 @@
       });
     }
 
+    function loadReviews() {
+      // Get all reviews across all books
+      db.collectionGroup("reviews").orderBy("timestamp", "desc").get()
+        .then(snapshot => {
+          allReviews = snapshot.docs.map(doc => {
+            const pathParts = doc.ref.path.split('/');
+            return {
+              id: doc.id,
+              bookId: pathParts[1],
+              ...doc.data()
+            };
+          });
+          
+          // Get book details for each review
+          const bookPromises = allReviews.map(review => {
+            return db.collection("books").doc(review.bookId).get()
+              .then(bookDoc => {
+                review.bookTitle = bookDoc.data()?.title || 'Unknown Book';
+                return review;
+              });
+          });
+          
+          return Promise.all(bookPromises);
+        })
+        .then(reviewsWithBooks => {
+          renderReviews(reviewsWithBooks);
+        })
+        .catch(err => {
+          console.error("Error loading reviews:", err);
+          alert("Error loading reviews: " + err.message);
+        });
+    }
+
+    function renderReviews(reviews) {
+      const container = document.getElementById('reviews-list');
+      container.innerHTML = '';
+
+      if (reviews.length === 0) {
+        container.innerHTML = '<p>No reviews found</p>';
+        return;
+      }
+
+      reviews.forEach(review => {
+        const reviewItem = document.createElement('div');
+        reviewItem.className = 'review-item';
+        reviewItem.innerHTML = `
+          <div class="review-header">
+            <span class="review-author">${toProperCase(review.reviewerName)} (${review.reviewerApartment})</span>
+            <span class="review-date">${formatCompactTime(review.timestamp)}</span>
+          </div>
+          <div class="review-book">For: ${toProperCase(review.bookTitle)}</div>
+          <div class="review-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div>
+          <div class="review-content">${review.text}</div>
+          <button class="delete-btn" onclick="deleteReview('${review.bookId}', '${review.id}')">
+            <i class="fas fa-trash"></i> Delete Review
+          </button>
+        `;
+        container.appendChild(reviewItem);
+      });
+    }
+
+    function formatCompactTime(dateString) {
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        
+        const now = new Date();
+        const isToday = date.getDate() === now.getDate() && 
+                       date.getMonth() === now.getMonth() && 
+                       date.getFullYear() === now.getFullYear();
+        
+        return isToday 
+          ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : date.toLocaleString([], { 
+              month: 'short', 
+              day: 'numeric', 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            });
+      } catch (e) {
+        console.error("Error formatting time:", e);
+        return '';
+      }
+    }
+
     function toggleAdminStatus(userId, makeAdmin) {
       const action = makeAdmin ? 'grant' : 'remove';
       const confirmation = makeAdmin 
@@ -787,6 +941,16 @@
         (user.apartment && user.apartment.toLowerCase().includes(searchTerm))
       );
       renderUsers(filtered);
+    }
+
+    function filterReviews() {
+      const searchTerm = document.getElementById('review-search').value.toLowerCase();
+      const filtered = allReviews.filter(review => 
+        (review.reviewerName && review.reviewerName.toLowerCase().includes(searchTerm)) ||
+        (review.text && review.text.toLowerCase().includes(searchTerm)) ||
+        (review.bookTitle && review.bookTitle.toLowerCase().includes(searchTerm))
+      );
+      renderReviews(filtered);
     }
 
     function openEditBookModal(bookId) {
@@ -836,6 +1000,21 @@
 
     function closeModal(modalId) {
       document.getElementById(modalId).style.display = 'none';
+    }
+
+    function deleteReview(bookId, reviewId) {
+      if (confirm("Are you sure you want to delete this review?")) {
+        db.collection("books").doc(bookId).collection("reviews").doc(reviewId).delete()
+          .then(() => {
+            alert("Review deleted successfully");
+            loadReviews();
+            loadBooks(); // Refresh books to update ratings
+          })
+          .catch(err => {
+            console.error("Error deleting review:", err);
+            alert("Error deleting review: " + err.message);
+          });
+      }
     }
 
     // Form submissions
@@ -951,38 +1130,69 @@
     });
 
     function deleteBook(bookId) {
-      if (confirm("Are you sure you want to delete this book?")) {
-        db.collection("books").doc(bookId).delete()
-          .then(() => {
-            alert("Book deleted successfully");
-            loadBooks();
-          })
-          .catch(err => alert("Error deleting book: " + err.message));
-      }
-    }
-
-    function deleteUser(userId) {
-      if (confirm("Are you sure you want to delete this user? This will also remove all their books.")) {
-        db.collection("books").where("ownerId", "==", userId).get()
-          .then(snapshot => {
+      if (confirm("Are you sure you want to delete this book? This will also delete all its reviews.")) {
+        // First delete all reviews for this book
+        db.collection("books").doc(bookId).collection("reviews").get()
+          .then(reviewsSnapshot => {
             const batch = db.batch();
-            snapshot.forEach(doc => {
+            reviewsSnapshot.forEach(doc => {
               batch.delete(doc.ref);
             });
             return batch.commit();
           })
           .then(() => {
-            return db.collection("users").doc(userId).delete();
+            // Then delete the book itself
+            return db.collection("books").doc(bookId).delete();
           })
           .then(() => {
-            alert("User and their books deleted successfully");
-            loadUsers();
+            alert("Book and its reviews deleted successfully");
             loadBooks();
+            loadReviews();
           })
-          .catch(err => alert("Error deleting user: " + err.message));
+          .catch(err => {
+            console.error("Error deleting book:", err);
+            alert("Error deleting book: " + err.message);
+          });
       }
     }
 
+    function deleteUser(userId) {
+      if (confirm("Are you sure you want to delete this user? This will also remove all their books and reviews.")) {
+        // First delete all books owned by this user and their reviews
+        db.collection("books").where("ownerId", "==", userId).get()
+          .then(snapshot => {
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+              // Delete book
+              batch.delete(doc.ref);
+              // Delete all reviews for this book
+              db.collection("books").doc(doc.id).collection("reviews").get()
+                .then(reviewsSnapshot => {
+                  reviewsSnapshot.forEach(reviewDoc => {
+                    batch.delete(reviewDoc.ref);
+                  });
+                });
+            });
+            return batch.commit();
+          })
+          .then(() => {
+            // Then delete the user
+            return db.collection("users").doc(userId).delete();
+          })
+          .then(() => {
+            alert("User, their books and reviews deleted successfully");
+            loadUsers();
+            loadBooks();
+            loadReviews();
+          })
+          .catch(err => {
+            console.error("Error deleting user:", err);
+            alert("Error deleting user: " + err.message);
+          });
+      }
+    }
+
+    
     // NEW ANALYTICS FUNCTIONS
     function loadAnalytics() {
       // Total Users
